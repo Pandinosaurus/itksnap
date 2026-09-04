@@ -1231,7 +1231,7 @@ void WorkspaceAPI::UploadWorkspace(const char *url, int ticket_id,
     {
     const char *fn = fn_to_upload[i].c_str();
 
-    RESTClient rcu;
+    DSSRESTClient rcu;
 
     // Set progress callback
     rcu.SetProgressCallback(transfer_progress_src,
@@ -1271,7 +1271,7 @@ int WorkspaceAPI::CreateWorkspaceTicket(const string &service_desc,
     }
 
   // Create a new ticket
-  RESTClient rc;
+  DSSRESTClient rc;
   if(!rc.Post("api/tickets","%s=%s", which_desc.c_str(), service_desc.c_str()))
     throw IRISException("Failed to create new ticket (%s)", rc.GetResponseText());
 
@@ -1308,7 +1308,7 @@ string WorkspaceAPI::DownloadTicketFiles(
     accum->AddObserver(itk::ProgressEvent(), cmd_progress);
 
   // First off, get the list of all files for this ticket
-  RESTClient rc;
+  DSSRESTClient rc;
   if(!rc.Get("%s/tickets/%d/files/%s", url_base, ticket_id, area))
     throw IRISException("Failed to get list of files for ticket %d (%s)",
       ticket_id, rc.GetResponseText());

@@ -9,16 +9,16 @@ engine.sleep(1000);
 //=== Expand 3D Panel
 var panel3D = engine.findChild(mainwin, "panel3D");
 var btnExpand = engine.findChild(panel3D, "btnExpand");
-btnExpand.click();
+engine.click(btnExpand);
 
 
 //=== Select a specific overlay
 var layerdialog = engine.findChild(mainwin,"dlgLayerInspector");
 var rowdelegate = engine.findChild(layerdialog, "wgtRowDelegate_0002");
-rowdelegate.setSelected(true);
+engine.setProperty(rowdelegate, "selected", true);
 
 //=== Show the layer inspector
-engine.findChild(mainwin,"actionLayerInspector").trigger();
+engine.trigger("actionLayerInspector");
 
 //=== Select the mesh data name box
 var boxDataArray = engine.findChild(layerdialog, "boxMeshDataName");
@@ -27,23 +27,30 @@ var boxDataArray = engine.findChild(layerdialog, "boxMeshDataName");
 engine.invoke(layerdialog, "close");
 
 //=== Validate data array settings
-for (let i = 0; i < 17; ++i){
-    boxDataArray.setCurrentIndex(i);
-    let cmpcolormap = engine.findChild(layerdialog, "cmpColorMap");
-    engine.findChild(layerdialog, "tabWidget").setCurrentWidget(cmpcolormap);
+let cmpcolormap = engine.findChild(layerdialog, "cmpColorMap");
+let cmpgeneral = engine.findChild(layerdialog, "cmpComponent");
+let tabwidget = engine.findChild(layerdialog, "tabWidget");
+let inpreset = engine.findChild(cmpcolormap, "inPreset");
 
-    let inpreset = engine.findChild(cmpcolormap, "inPreset");
-    engine.validateValue(inpreset.currentIndex, i);
+for (let i = 0; i < 17; ++i) {
+
+    engine.callMethod(tabwidget, "setCurrentWidget", [cmpgeneral]);
+    engine.callMethod(boxDataArray, "setCurrentIndex", [i+1]);
+
+    engine.callMethod(tabwidget, "setCurrentWidget", [cmpcolormap]);
+    engine.validateProperty(inpreset, "currentIndex", i);
+
+    engine.sleep(100);
 }
 
-boxDataArray.setCurrentIndex(3);
+engine.callMethod(boxDataArray, "setCurrentIndex", [4]);
 let cmpContrast = engine.findChild(layerdialog, "cmpContrast");
 let inControlId = engine.findChild(cmpContrast, "inControlId");
 
-engine.validateValue(inControlId.maximum, 7);
+engine.validateProperty(inControlId, "maximum", 7);
 
 //=== Close a specific mesh layer
-engine.invoke(rowdelegate, "on_actionClose_triggered");
+engine.trigger("actionClose", rowdelegate);
 engine.sleep(1000);
 
 //=== The layer should be closed
@@ -51,4 +58,4 @@ let meshRowDelegate = engine.findChild(layerdialog, "wgtRowDelegate_0002");
 engine.validateValue(meshRowDelegate, null);
 
 //=== Trigger the unload all action
-engine.findChild(mainwin,"actionUnload_All").trigger();
+engine.trigger("actionUnload_All");

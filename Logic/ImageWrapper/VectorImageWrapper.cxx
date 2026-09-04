@@ -107,7 +107,7 @@ VectorImageWrapper<TTraits>
 {
   // Get the numerical value
   MultiChannelDisplayMode mode = this->m_DisplayMapping->GetDisplayMode();
-  if(mode.UseRGB || (mode.RenderAsGrid && this->GetNumberOfComponents() == 3))
+  if(mode.UseRGB || mode.RenderAsGrid)
     {
     // Sample the intensity under the cursor for the current time point
     this->SampleIntensityAtReferenceIndex(
@@ -135,7 +135,7 @@ VectorImageWrapper<TTraits>
 {
   // Get the numerical value
   MultiChannelDisplayMode mode = this->m_DisplayMapping->GetDisplayMode();
-  if(mode.UseRGB || (mode.RenderAsGrid && this->GetNumberOfComponents() == 3))
+  if(mode.UseRGB || mode.RenderAsGrid)
     {
     // Create a non-orthogonal slicer for this task - we don't want to interfere with the
     // main slicing pipeline
@@ -258,8 +258,8 @@ VectorImageWrapper<TTraits>
   wrapper->SetParentWrapper(this);
 
   // Pass the display geometry to the component wrapper
-  for(int k = 0; k < 3; k++)
-    wrapper->SetDisplayViewportGeometry(k, this->GetDisplayViewportGeometry(k));
+  for(auto index : DisplaySliceIndices)
+    wrapper->SetDisplayViewportGeometry(index, this->GetDisplayViewportGeometry(index));
 
   SmartPtr<ScalarImageWrapperBase> ptrout = wrapper.GetPointer();
 
@@ -297,8 +297,8 @@ VectorImageWrapper<TTraits>
     SmartPtr<ComponentWrapperType> cw = ComponentWrapperType::New();
 
     // Pass the display geometry to the component wrapper
-    for(int k = 0; k < 3; k++)
-      cw->SetDisplayViewportGeometry(k, this->GetDisplayViewportGeometry(k));
+    for(auto index : DisplaySliceIndices)
+      cw->SetDisplayViewportGeometry(index, this->GetDisplayViewportGeometry(index));
 
     // Initialize referencing the current wrapper
     cw->InitializeToWrapper(this, comp, referenceSpace, transform);
@@ -360,10 +360,18 @@ VectorImageWrapper<TTraits>
 ::SetITKTransform(ImageBaseType *referenceSpace, ITKTransformType *transform)
 {
   Superclass::SetITKTransform(referenceSpace, transform);
-  for(ScalarRepIterator it = m_ScalarReps.begin(); it != m_ScalarReps.end(); ++it)
-    {
-    it->second->SetITKTransform(referenceSpace, transform);
-    }
+  for(auto &it : m_ScalarReps)
+    it.second->SetITKTransform(referenceSpace, transform);
+}
+
+template<class TTraits>
+void
+VectorImageWrapper<TTraits>
+::SetReferenceSpace(ImageBaseType *referenceSpace)
+{
+  Superclass::SetReferenceSpace(referenceSpace);
+  for(auto &it : m_ScalarReps)
+    it.second->SetReferenceSpace(referenceSpace);
 }
 
 
@@ -445,18 +453,16 @@ VectorImageWrapper<TTraits>
 
 template <class TTraits>
 void
-VectorImageWrapper<TTraits>
-::SetDisplayViewportGeometry(
-    unsigned int index,
-    const ImageBaseType *viewport_image)
+VectorImageWrapper<TTraits>::SetDisplayViewportGeometry(DisplaySliceIndex    index,
+                                                        const ImageBaseType *viewport_image)
 {
   Superclass::SetDisplayViewportGeometry(index, viewport_image);
 
   // Propagate to owned scalar wrappers
-  for(ScalarRepIterator it = m_ScalarReps.begin(); it != m_ScalarReps.end(); ++it)
-    {
+  for (ScalarRepIterator it = m_ScalarReps.begin(); it != m_ScalarReps.end(); ++it)
+  {
     it->second->SetDisplayViewportGeometry(index, viewport_image);
-    }
+  }
 }
 
 template <class TTraits>
@@ -489,6 +495,16 @@ VectorImageWrapper<TTraits>
   Superclass::SetDirectionMatrix(direction);
   for(ScalarRepIterator it = m_ScalarReps.begin(); it != m_ScalarReps.end(); ++it)
     it->second->SetDirectionMatrix(direction);
+}
+
+template<class TTraits>
+void
+VectorImageWrapper<TTraits>
+::SetSlicingInterpolationMode(InterpolationMode mode)
+{
+    Superclass::SetSlicingInterpolationMode(mode);
+    for(ScalarRepIterator it = m_ScalarReps.begin(); it != m_ScalarReps.end(); ++it)
+        it->second->SetSlicingInterpolationMode(mode);
 }
 
 template <class TTraits>

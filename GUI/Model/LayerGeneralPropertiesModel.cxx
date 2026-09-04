@@ -1,5 +1,6 @@
 #include "LayerGeneralPropertiesModel.h"
 #include "DisplayMappingPolicy.h"
+#include "itksys/SystemTools.hxx"
 #include "MeshDisplayMappingPolicy.h"
 #include "LayerAssociation.h"
 #include "NumericPropertyToggleAdaptor.h"
@@ -43,6 +44,9 @@ LayerGeneralPropertiesModel::LayerGeneralPropertiesModel()
   m_FilenameModel = wrapGetterSetterPairAsProperty(
         this, &Self::GetFilenameValue);
 
+  m_RemoteURLModel = wrapGetterSetterPairAsProperty(
+        this, &Self::GetRemoteURLValue);
+
   m_NicknameModel = wrapGetterSetterPairAsProperty(
         this,
         &Self::GetNicknameValue,
@@ -68,10 +72,26 @@ LayerGeneralPropertiesModel::LayerGeneralPropertiesModel()
         &Self::GetCrntTimePointTagListValue,
         &Self::SetCrntTimePointTagListValue);
 
+  m_ActiveMeshLayerDataPropertyIdModel = wrapGetterSetterPairAsProperty(
+        this,
+        &Self::GetActiveMeshLayerDataPropertyIdValueAndRange,
+        &Self::SetActiveMeshLayerDataPropertyIdValue);
+
   m_MeshVectorModeModel = wrapGetterSetterPairAsProperty(
         this,
         &Self::GetMeshVectorModeValueAndRange,
         &Self::SetMeshVectorModeValue);
+
+  m_MeshSolidColorModel = wrapGetterSetterPairAsProperty(
+    this,
+    &Self::GetMeshSolidColorValue,
+    &Self::SetMeshSolidColorValue);
+
+  m_MeshSliceViewOpacityModel = wrapGetterSetterPairAsProperty(
+    this,
+    &Self::GetMeshSliceViewOpacityValueAndRange,
+    &Self::SetMeshSliceViewOpacityValue);
+
 }
 
 LayerGeneralPropertiesModel::~LayerGeneralPropertiesModel()
@@ -117,21 +137,37 @@ LayerGeneralPropertiesModel::RegisterWithLayer(WrapperBase *layer)
                   itk::ModifiedEvent(), ModelUpdateEvent());
 
   // Set a flag so we don't register a listener again
-  GetProperties().SetObserverTag(tag);  
+  GetProperties().SetObserverTag(tag);
+
+  // For mesh layers, also observe the wrapper histogram change event
+  // Because one layer can have multiple properties, and one property can have
+  // multiple components. Each component has its own histogram
+  if (dynamic_cast<MeshWrapperBase *>(m_Layer))
+  {
+    GetProperties().SetHistogramChangeObserverTag(
+      Rebroadcast(layer, WrapperHistogramChangeEvent(), ModelUpdateEvent()));
+  }
+
 }
 
 void
 LayerGeneralPropertiesModel::UnRegisterFromLayer(WrapperBase *layer, bool being_deleted)
 {
-  if(!being_deleted)
-    {
+  if (!being_deleted)
+  {
     // It's safe to call GetProperties()
     unsigned long tag = GetProperties().GetObserverTag();
-    if(tag)
-      {
+    if (tag)
+    {
       layer->GetDisplayMapping()->RemoveObserver(tag);
-      }
     }
+
+    unsigned long htag = GetProperties().GetHistogramChangeObserverTag();
+    if (htag && dynamic_cast<MeshWrapperBase *>(m_Layer))
+    {
+      layer->RemoveObserver(htag);
+    }
+  }
 }
 
 void
@@ -184,13 +220,22 @@ bool LayerGeneralPropertiesModel::CheckState(LayerGeneralPropertiesModel::UIStat
 
     case UIF_IS_MESH:
 			return row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH);
+
     case UIF_IS_MESHDATA_MULTICOMPONENT:
 			return row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH)
 					&& row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH_HAS_DATA)
-					&& row_model->CheckState(AbstractLayerTableRowModel::UIF_MULTICOMPONENT);
+          && row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH_MULTICOMPONENT);
+
 		case UIF_MESH_HAS_DATA:
 			return row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH)
 					&& row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH_HAS_DATA);
+
+    case UIF_HAS_REMOTE_URL:
+      return !m_Layer->GetRemoteURL().empty();
+
+    case UIF_IS_MESHDATA_SOLID_COLOR:
+      return row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH) &&
+             row_model->CheckState(AbstractLayerTableRowModel::UIF_MESH_SOLID_COLOR);
     }
 
   return false;
@@ -257,12 +302,13 @@ bool LayerGeneralPropertiesModel
     (*domain)[MODE_AVERAGE] = "Average of Components";
 
     // RGB is available only if there are three components
-    if(layer->GetNumberOfComponents() == 3)
+    if(layer->GetNumberOfComponents() == 2 || layer->GetNumberOfComponents() == 3)
       {
       (*domain)[MODE_RGB] = "RGB Display";
       }
 
-    if (layer->GetNumberOfComponents() == 2 || layer->GetNumberOfComponents() == 3)
+    if (layer->GetNumberOfComponents() == 3 ||
+          (layer->GetNumberOfComponents() == 2 && layer->GetBufferedRegion().GetSize()[2] == 1))
       {
       (*domain)[MODE_GRID] = "Deformation Grid Display";
       }
@@ -415,7 +461,21 @@ bool LayerGeneralPropertiesModel::GetFilenameValue(std::string &value)
   auto layer = this->GetLayer();
   if(layer)
     {
-    value = layer->GetFileName();
+    if(!layer->GetRemoteURL().empty())
+      value = itksys::SystemTools::GetFilenameName(layer->GetFileName());
+    else
+      value = layer->GetFileName();
+    return true;
+    }
+  return false;
+}
+
+bool LayerGeneralPropertiesModel::GetRemoteURLValue(std::string &value)
+{
+  auto layer = this->GetLayer();
+  if(layer)
+    {
+    value = layer->GetRemoteURL();
     return true;
     }
   return false;
@@ -528,6 +588,70 @@ SetCrntTimePointTagListValue(TagList value)
 	tpp->SetTagList(value);
 }
 
+bool
+LayerGeneralPropertiesModel::GetActiveMeshLayerDataPropertyIdValueAndRange(
+  int                                         &value,
+  MeshLayerTableRowModel::MeshDataArrayDomain *domain)
+{
+  auto *row_model = GetSelectedMeshLayerTableRowModel();
+  return row_model ? row_model->GetActiveMeshLayerDataPropertyIdModel()->GetValueAndDomain(value, domain) : false;
+}
+
+void
+LayerGeneralPropertiesModel::SetActiveMeshLayerDataPropertyIdValue(int value)
+{
+  auto *row_model = GetSelectedMeshLayerTableRowModel();
+  if(row_model)
+    row_model->SetActiveMeshLayerDataPropertyId(value);
+}
+
+bool
+LayerGeneralPropertiesModel::GetMeshSolidColorValue(Vector3d &value)
+{
+  // The current layer has to be a mesh layer
+  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper*>(m_Layer);
+  if (!mesh_layer)
+    return false;
+
+  value = mesh_layer->GetSolidColor();
+  return true;
+}
+
+void
+LayerGeneralPropertiesModel::SetMeshSolidColorValue(const Vector3d value)
+{
+  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper*>(m_Layer);
+  if(mesh_layer)
+  {
+    mesh_layer->SetSolidColor(value);
+  }
+}
+
+bool
+LayerGeneralPropertiesModel::GetMeshSliceViewOpacityValueAndRange(int                    &value,
+                                                                  NumericValueRange<int> *domain)
+{
+  // The current layer has to be a mesh layer
+  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper *>(m_Layer);
+  if (!mesh_layer)
+    return false;
+
+  value = static_cast<int>(100 * mesh_layer->GetSliceViewOpacity());
+  if (domain)
+    domain->Set(0, 100, 1);
+  return true;
+}
+
+void
+LayerGeneralPropertiesModel::SetMeshSliceViewOpacityValue(int value)
+{
+  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper*>(m_Layer);
+  if(mesh_layer)
+  {
+    mesh_layer->SetSliceViewOpacity(value / 100.0);
+  }
+}
+
 
 AbstractMultiChannelDisplayMappingPolicy *
 LayerGeneralPropertiesModel::GetMultiChannelDisplayPolicy()
@@ -542,7 +666,23 @@ AbstractLayerTableRowModel *LayerGeneralPropertiesModel::GetSelectedLayerTableRo
 {
   if(m_Layer)
     return dynamic_cast<AbstractLayerTableRowModel *>(m_Layer->GetUserData("LayerTableRowModel"));
-  else return NULL;
+  else return nullptr;
+}
+
+MeshLayerTableRowModel *
+LayerGeneralPropertiesModel::GetSelectedMeshLayerTableRowModel()
+{
+  if(m_Layer)
+    return dynamic_cast<MeshLayerTableRowModel *>(m_Layer->GetUserData("LayerTableRowModel"));
+  else return nullptr;
+}
+
+ImageLayerTableRowModel *
+LayerGeneralPropertiesModel::GetSelectedImageLayerTableRowModel()
+{
+  if(m_Layer)
+    return dynamic_cast<ImageLayerTableRowModel *>(m_Layer->GetUserData("LayerTableRowModel"));
+  else return nullptr;
 }
 
 bool
@@ -561,90 +701,20 @@ LayerGeneralPropertiesModel
   return true;
 }
 
-void
-LayerGeneralPropertiesModel::
-SetActiveMeshLayerDataPropertyId(int id)
-{
-  if (!m_Layer)
-    return;
-
-  // The current layer has to be a mesh layer
-  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper*>(m_Layer);
-  if (!mesh_layer)
-    return;
-
-  mesh_layer->SetActiveMeshLayerDataPropertyId(id);
-
-  // ask UI to recheck the state of this model
-  // -- this is for the activation of the vector mode layout
-  this->InvokeEvent(StateMachineChangeEvent());
-  // Trigger vector mode to update domain
-  this->GetMeshVectorModeModel()->InvokeEvent(DomainChangedEvent());
-}
-
 bool
-LayerGeneralPropertiesModel::
-GetMeshVectorModeValueAndRange(vtkIdType &value, MeshVectorModeDomain *domain)
+LayerGeneralPropertiesModel::GetMeshVectorModeValueAndRange(
+  vtkIdType                                    &value,
+  MeshLayerTableRowModel::MeshVectorModeDomain *domain)
 {
-  // The current layer has to be a mesh layer
-  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper*>(m_Layer);
-  if (!mesh_layer)
-    return false;
-
-	using VectorMode = MeshLayerDataArrayProperty::VectorMode;
-
-	auto layer_prop = mesh_layer->GetActiveDataArrayProperty();
-	size_t nc = layer_prop->GetNumberOfComponents();
-
-	// Start populating the domain
-	size_t domain_ind = 0;
-
-	if (domain)
-		{
-		(*domain)[domain_ind++] = "Magnitude"; // always starts with magnitude
-
-		for (size_t i = 0; i < nc; ++i) // process each components
-			(*domain)[domain_ind++] = std::string(layer_prop->GetComponent(i).m_Name);
-		}
-
-	// Processs current value
-	switch(layer_prop->GetActiveVectorMode())
-		{
-		case VectorMode::MAGNITUDE:
-			value = 0;
-			break;
-		default: // COMPONENT Mode
-			{
-			int shift = 1; // skip magnitude 0
-			value = layer_prop->GetActiveComponentId() + shift;
-			}
-		}
-
-  return true;
+  auto *row_model = GetSelectedMeshLayerTableRowModel();
+  return row_model ? row_model->GetMeshVectorModeModel()->GetValueAndDomain(value, domain) : false;
 }
 
 void
 LayerGeneralPropertiesModel::
 SetMeshVectorModeValue(vtkIdType value)
 {
-  // The current layer has to be a mesh layer
-  StandaloneMeshWrapper *mesh_layer = dynamic_cast<StandaloneMeshWrapper*>(m_Layer);
-  if (!mesh_layer)
-    return;
-
-	assert(value >= 0);
-
-	auto layer_prop = mesh_layer->GetActiveDataArrayProperty();
-	using VectorMode = MeshLayerDataArrayProperty::VectorMode;
-
-	if (value == 0) // magnitude
-		layer_prop->SetActiveVectorMode(VectorMode::MAGNITUDE);
-	else
-		{
-		const int shift = 1; // skip magnitude 0
-		// process individual components
-		layer_prop->SetActiveVectorMode(VectorMode::COMPONENT, value - shift);
-		}
-
-  mesh_layer->InvokeEvent(WrapperDisplayMappingChangeEvent());
+  auto *row_model = GetSelectedMeshLayerTableRowModel();
+  if(row_model)
+    row_model->GetMeshVectorModeModel()->SetValue(value);
 }

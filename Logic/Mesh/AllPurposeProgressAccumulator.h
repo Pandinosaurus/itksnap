@@ -23,7 +23,6 @@
 
 // Some ugly code here because VTK decided to change its architecture 
 // from 4.2 to 4.4. 
-#include "vtkConfigure.h"
 #if (VTK_MAJOR_VERSION == 4) && (VTK_MINOR_VERSION <= 4)
   #include "vtkProcessObject.h"
   #define vtkAlgorithmClass vtkProcessObject
@@ -148,6 +147,9 @@ public:
 
   /** Generic callback function for generic sources */
   static void GenericProgressCallback(void *source, double progress);
+
+  /** Generic callback function for generic sources */
+  static void GenericProgressCallback(void *source, size_t done, size_t total);
 
   /**
    * Register a generic source. This source will communicate its progress

@@ -1,7 +1,7 @@
 #############################################
-# REQUIRE ITK 3.20 OR LATER                 #
+# REQUIRE ITK 5.4 OR LATER                 #
 #############################################
-FIND_PACKAGE(ITK 5.2.1 REQUIRED COMPONENTS
+FIND_PACKAGE(ITK 5.4 REQUIRED COMPONENTS
   ITKAnisotropicSmoothing
   ITKAntiAlias
   ITKBiasCorrection
@@ -60,6 +60,7 @@ FIND_PACKAGE(ITK 5.2.1 REQUIRED COMPONENTS
   ITKZLIB
   ITKImageIO
   ITKMeshIO
+  ITKNIFTI
   ITKTransformIO
   MorphologicalContourInterpolation)
 
@@ -68,7 +69,7 @@ INCLUDE(${ITK_USE_FILE})
 #############################################
 # REQUIRE VTK                               #
 #############################################
-FIND_PACKAGE(VTK 9 REQUIRED COMPONENTS
+FIND_PACKAGE(VTK 9.3.1 REQUIRED COMPONENTS
   ChartsCore
   CommonComputationalGeometry
   CommonCore
@@ -94,6 +95,7 @@ FIND_PACKAGE(VTK 9 REQUIRED COMPONENTS
   RenderingContext2D
   RenderingContextOpenGL2
   RenderingCore
+  RenderingExternal
   RenderingLOD
   RenderingOpenGL2
   RenderingUI
@@ -103,18 +105,20 @@ FIND_PACKAGE(VTK 9 REQUIRED COMPONENTS
   ViewsContext2D)
 
 #############################################
-# REQUIRE QT5                               #
+# REQUIRE QT6                               #
 #############################################
-FIND_PACKAGE(Qt6Widgets)
-FIND_PACKAGE(Qt6OpenGL)
-FIND_PACKAGE(Qt6Concurrent)
-FIND_PACKAGE(Qt6Qml)
+FIND_PACKAGE(Qt6Widgets 6.9.3 REQUIRED)
+FIND_PACKAGE(Qt6OpenGL 6.9.3 REQUIRED)
+FIND_PACKAGE(Qt6Concurrent 6.9.3 REQUIRED)
+FIND_PACKAGE(Qt6Qml 6.9.3 REQUIRED)
+FIND_PACKAGE(Qt6LinguistTools 6.9.3 REQUIRED)
 
 SET(SNAP_QT_INCLUDE_DIRS
   ${Qt6Widgets_INCLUDE_DIRS}
   ${Qt6OpenGL_INCLUDE_DIRS}
   ${Qt6Concurrent_INCLUDE_DIRS}
   ${Qt6Qml_INCLUDE_DIRS}
+  ${Qt6LinguistTools_INCLUDE_DIRS}
 )
 
 SET(SNAP_QT_LIBRARIES
@@ -144,4 +148,20 @@ IF(CURL_FOUND)
   INCLUDE_DIRECTORIES(${CURL_INCLUDE_DIR})
 ENDIF(CURL_FOUND)
 
+# Look for LIBSSH
+FIND_PACKAGE(LIBSSH REQUIRED)
+IF(LIBSSH_FOUND)
+  IF(LIBSSH_INCLUDE_DIR)
+    MESSAGE(STATUS "LIBSSH include dir: ${LIBSSH_INCLUDE_DIR}")
+    INCLUDE_DIRECTORIES(${LIBSSH_INCLUDE_DIR})
+  ELSE()
+    FIND_FILE(LIBSSH_INCUDE_FILE NAMES libssh/libssh.h)
+    cmake_path(GET LIBSSH_INCUDE_FILE PARENT_PATH LIBSSH_INCLUDE_DIR)
+    cmake_path(GET LIBSSH_INCLUDE_DIR PARENT_PATH LIBSSH_INCLUDE_DIR)
+    MESSAGE(STATUS "LIBSSH include dir: ${LIBSSH_INCLUDE_DIR}")
+    INCLUDE_DIRECTORIES(${LIBSSH_INCLUDE_DIR})
+  ENDIF()
+  get_target_property(SSH_IMPORTED_LOCATION ssh LOCATION)
+  MESSAGE(STATUS "LIBSSH library file: ${SSH_IMPORTED_LOCATION}")
+ENDIF()
 

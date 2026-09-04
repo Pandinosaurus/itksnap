@@ -46,6 +46,7 @@
 class IRISApplication;
 class MeshOptions;
 class DefaultBehaviorSettings;
+class RemoteResourceSettings;
 
 #include <vector>
 #include "SNAPCommon.h"
@@ -81,6 +82,12 @@ enum PreprocessingMode
   PREPROCESS_EDGE
 };
 
+constexpr std::array<PreprocessingMode, 5> PreprocessingModes = { PREPROCESS_NONE,
+                                                                  PREPROCESS_THRESHOLD,
+                                                                  PREPROCESS_RF,
+                                                                  PREPROCESS_GMM,
+                                                                  PREPROCESS_EDGE };
+
 enum ConstraintsType 
 {
   SAPIRO,
@@ -89,13 +96,19 @@ enum ConstraintsType
   USER
 };
   
-enum PaintbrushMode
+enum PaintbrushShape
 {
   PAINTBRUSH_RECTANGULAR = 0,
-  PAINTBRUSH_ROUND = 1,
-  PAINTBRUSH_WATERSHED = 2
+  PAINTBRUSH_ROUND
 };
-  
+
+enum PaintbrushSmartMode
+{
+  PAINTBRUSH_MANUAL = 0,
+  PAINTBRUSH_WATERSHED,
+  PAINTBRUSH_DLS
+};
+
 enum DisplayPanel
 {
   PANEL_AXIAL = 0,
@@ -150,12 +163,14 @@ struct PaintbrushWatershedSettings
 struct PaintbrushSettings
 {
   double radius;
-  PaintbrushMode mode;
+  PaintbrushShape shape;
+  PaintbrushSmartMode smart_mode;
   bool volumetric;
   bool isotropic;
   bool chase;
 
   PaintbrushWatershedSettings watershed;
+  std::string dl_pipeline_id;
 };
 
 /** Annotation settings */
@@ -278,6 +293,9 @@ public:
 
   /** Get the default behavior settings */
   irisGetMacro(DefaultBehaviorSettings, DefaultBehaviorSettings *)
+
+  /** Get the remote resource (download cache) settings */
+  irisGetMacro(RemoteResourceSettings, RemoteResourceSettings *)
 
   /** Settings associated with the segmentation ROI */
   irisSimplePropertyAccessMacro(SegmentationROISettings, SNAPSegmentationROISettings)
@@ -424,12 +442,6 @@ protected:
 
 private:
 
-  /** Get the current crosshairs position */
-  irisSetMacro(CrosshairsPosition,Vector3ui );
-
-  /** Set the current crosshairs position */
-  irisGetMacro(CrosshairsPosition,Vector3ui );
-
   friend class IRISApplication;
 
   /** Color label used to draw polygons */
@@ -446,9 +458,6 @@ private:
 
   /** The transparency of the segmentation overlay */
   SmartPtr<ConcreteRangedDoubleProperty> m_SegmentationAlphaModel;
-
-  /** The current crosshairs position */
-  Vector3ui m_CrosshairsPosition;
 
   /** Whether the slice requires an update or not (TODO: obsolete?) */
   int m_UpdateSliceFlag;
@@ -522,6 +531,9 @@ private:
   // Default behavior settings
   SmartPtr<DefaultBehaviorSettings> m_DefaultBehaviorSettings;
 
+  // Remote resource (download cache) settings
+  SmartPtr<RemoteResourceSettings> m_RemoteResourceSettings;
+
   // Current settings for the snake algorithm
   typedef ConcretePropertyModel<SnakeParameters, TrivialDomain> ConcreteSnakeParametersModel;
   SmartPtr<ConcreteSnakeParametersModel> m_SnakeParametersModel;
@@ -548,8 +560,11 @@ private:
 
   // ------------------- Selected Image ID ---------------------------------
   SmartPtr<ConcreteSimpleULongProperty> m_SelectedLayerIdModel;
-  SmartPtr<ConcreteSimpleULongProperty> m_SelectedSegmentationLayerIdModel;
+  SmartPtr<AbstractSimpleULongProperty> m_SelectedSegmentationLayerIdModel;
   SmartPtr<ConcreteSimpleULongProperty> m_SelectedLayerInspectorLayerIdModel;
+
+  bool GetSelectedSegmentationLayerIdValue(unsigned long &value);
+  void SetSelectedSegmentationLayerIdValue(unsigned long value);
 
   // ------------------- Project Related -----------------------------------
   SmartPtr<ConcreteSimpleStringProperty> m_ProjectFilenameModel;

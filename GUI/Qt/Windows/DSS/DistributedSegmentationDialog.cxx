@@ -89,6 +89,7 @@ public:
     // Set data for the items
     items[0]->setData(QVariant((qlonglong) status.id), Qt::DisplayRole | Qt::EditRole);
     items[1]->setText(from_utf8(status.service_name));
+    items[1]->setToolTip(from_utf8(status.service_name));
     items[2]->setText(from_utf8(dss_model::ticket_status_strings[status.status]));
 
     // Set flags on all items
@@ -129,8 +130,7 @@ public:
 
     // Compute date in easy to read format
     QString t_stamp = from_utf8(entry.atime).split(".").first();
-    QDateTime dt = QDateTime::fromString(t_stamp, "yyyy-MM-dd hh:mm:ss");
-    dt.setTimeSpec(Qt::UTC);
+    QDateTime dt = QDateTime::fromString(t_stamp, "yyyy-MM-dd hh:mm:ss").toUTC();
 
     // First item is the date/time
     items[0]->setText(get_user_friendly_date_string(dt));
@@ -185,15 +185,15 @@ public:
     switch(value.status)
       {
       case dss_model::AUTH_NOT_CONNECTED:
-        w->setText("Not Connected");
+        w->setText(QCoreApplication::translate("DistributedSegmentationDialog", "Not Connected"));
         w->setStyleSheet("color: darkred; font-weight: bold;");
         break;
       case dss_model::AUTH_CONNECTED_NOT_AUTHENTICATED:
-        w->setText("Connected but Not Logged In");
+        w->setText(QCoreApplication::translate("DistributedSegmentationDialog", "Connected but Not Logged In"));
         w->setStyleSheet("color: darkred; font-weight: bold;");
         break;
       case dss_model::AUTH_AUTHENTICATED:
-        w->setText(QString("Logged in as %1").arg(from_utf8(value.user_email)));
+        w->setText(QCoreApplication::translate("DistributedSegmentationDialog", "Logged in as %1").arg(from_utf8(value.user_email)));
         w->setStyleSheet("color: darkgreen; font-weight: bold;");
         break;
       }
@@ -212,33 +212,11 @@ public:
   virtual void SetValue(QLabel *w, const dss_model::IdType &value)
   {
     if(value > 0)
-      w->setText(QString("Ticket %1").arg(value));
+      w->setText(QCoreApplication::translate("DistributedSegmentationDialog", "Ticket %1").arg(value));
     else
-      w->setText("Selected Ticket");
+      w->setText(QCoreApplication::translate("DistributedSegmentationDialog", "Selected Ticket"));
   }
 };
-
-/*
-
-template <>
-class DefaultWidgetDomainTraits<DistributedSegmentationModel::ServerStatusDomain, QLabel>
-     : public WidgetDomainTraitsBase<DistributedSegmentationModel::ServerStatusDomain, QLabel *>
-{
-public:
-  typedef DistributedSegmentationModel::ServerStatusDomain TDomain;
-
-  virtual void SetDomain(QLabel *w, const TDomain &domain) ITK_OVERRIDE {}
-  virtual TDomain GetDomain(QLabel * w) ITK_OVERRIDE { return TDomain(); }
-};
-
-*/
-
-
-
-
-
-
-
 
 DistributedSegmentationDialog::DistributedSegmentationDialog(QWidget *parent) :
   QDialog(parent),
@@ -250,7 +228,7 @@ DistributedSegmentationDialog::DistributedSegmentationDialog(QWidget *parent) :
   // Create the model for the tag listing
   QStandardItemModel *tags_model = new QStandardItemModel();
   tags_model->setHorizontalHeaderLabels(
-        QStringList() << "Tag" << "Type" << "Required" << "Target Object");
+        QStringList() << tr("Tag") << tr("Type") << tr("Required") << tr("Target Object"));
   ui->tblTags->setModel(tags_model);
 
   // Set the sizing of the columns
@@ -268,7 +246,7 @@ DistributedSegmentationDialog::DistributedSegmentationDialog(QWidget *parent) :
 
   // Create the model for the table view
   QStandardItemModel *ticket_list_model = new QStandardItemModel();
-  ticket_list_model->setHorizontalHeaderLabels(QStringList() << "Ticket" << "Service" << "Status");
+  ticket_list_model->setHorizontalHeaderLabels(QStringList() << tr("Ticket") << tr("Service") << tr("Status"));
   ui->tblTickets->setModel(ticket_list_model);
 
   QItemSelectionModel *sel = new QItemSelectionModel(ticket_list_model);
@@ -286,7 +264,7 @@ DistributedSegmentationDialog::DistributedSegmentationDialog(QWidget *parent) :
 
   // Create model for the logs
   QStandardItemModel *log_entry_list_model = new QStandardItemModel();
-  log_entry_list_model->setHorizontalHeaderLabels(QStringList() << "Time" << "Message" << "Att");
+  log_entry_list_model->setHorizontalHeaderLabels(QStringList() << tr("Time") << tr("Message") << tr("Att"));
   ui->tblLog->setModel(log_entry_list_model);
 
 #if QT_VERSION >= 0x050000
@@ -313,6 +291,22 @@ DistributedSegmentationDialog::DistributedSegmentationDialog(QWidget *parent) :
 DistributedSegmentationDialog::~DistributedSegmentationDialog()
 {
   delete ui;
+}
+
+void DistributedSegmentationDialog::showEvent(QShowEvent *event)
+{
+  QDialog::showEvent(event);
+
+  if(m_Model)
+    {
+    bool authenticated = m_Model->CheckState(DistributedSegmentationModel::UIF_AUTHENTICATED);
+    if(!authenticated)
+      ui->tabWidget->setCurrentWidget(ui->tabConfigure);
+    else if(m_FirstShow)
+      ui->tabWidget->setCurrentWidget(ui->tabSubmit);
+    }
+
+  m_FirstShow = false;
 }
 
 
@@ -355,6 +349,7 @@ void DistributedSegmentationDialog::SetModel(DistributedSegmentationModel *model
 
   // Ticket number
   makeDomainlessCoupling(ui->outTicketId, m_Model->GetTicketListModel());
+  makeCoupling(ui->outServiceName, m_Model->GetSelectedTicketServiceNameModel());
 
   // Local workspace
   makeCoupling(ui->outTicketWorkspace, m_Model->GetSelectedTicketLocalWorkspaceModel());
@@ -559,7 +554,7 @@ void DistributedSegmentationDialog::on_btnSubmit_clicked()
   QtProgressDialogScopedPointer progress(new QProgressDialog(this));
   QtProgressReporterDelegate progress_delegate;
   progress_delegate.SetProgressDialog(progress.data());
-  progress->setLabelText("Uploading workspace...");
+  progress->setLabelText(tr("Uploading workspace..."));
   progress->setMinimumDuration(0);
   progress->show();
   progress->activateWindow();
@@ -582,7 +577,7 @@ void DistributedSegmentationDialog::on_btnSubmit_clicked()
     }
   catch(std::exception &exc)
     {
-    ReportNonLethalException(this, exc, "Failed to submit workspace");
+    ReportNonLethalException(this, exc, tr("Failed to submit workspace"));
     }
 }
 
@@ -599,7 +594,7 @@ void DistributedSegmentationDialog::on_btnDownload_clicked()
   QtProgressDialogScopedPointer progress(new QProgressDialog(this));
   QtProgressReporterDelegate progress_delegate;
   progress_delegate.SetProgressDialog(progress.data());
-  progress->setLabelText("Downloading workspace...");
+  progress->setLabelText(tr("Downloading workspace..."));
   progress->setMinimumDuration(0);
   progress->show();
   progress->activateWindow();
@@ -635,7 +630,7 @@ void DistributedSegmentationDialog::on_btnDownload_clicked()
   }
   catch(IRISException &exc)
   {
-    ReportNonLethalException(this, exc, "Failed to download workspace");
+    ReportNonLethalException(this, exc, tr("Failed to download workspace"));
   }
 }
 
@@ -788,7 +783,7 @@ void DistributedSegmentationDialog::on_btnDelete_clicked()
   }
   catch(IRISException &exc)
   {
-    ReportNonLethalException(this, exc, "Failed to delete selected ticket");
+    ReportNonLethalException(this, exc, tr("Failed to delete selected ticket"));
   }
 
 
@@ -810,8 +805,8 @@ void DistributedSegmentationDialog::on_btnManageServers_clicked()
   // Create a dialog box with a list of servers
   bool ok = false;
   QString servers = QInputDialog::getMultiLineText(
-                      this, "Edit Server List",
-                      "Enter additional server URLs on separate lines below:", input, &ok);
+                      this, tr("Edit Server List"),
+                      tr("Enter additional server URLs on separate lines below:"), input, &ok);
 
 
   if(!ok)
@@ -848,8 +843,8 @@ void DistributedSegmentationDialog::on_btnManageServers_clicked()
     QUrl url(url_string);
     if(!url.isValid() || url.isRelative() || url.isLocalFile() || url.isEmpty())
       {
-      QMessageBox::warning(this, "Invalid server URL",
-                           QString("%1 is not a valid URL.").arg(url_string));
+      QMessageBox::warning(this, tr("Invalid server URL"),
+                           tr("%1 is not a valid URL.").arg(url_string));
       }
     else
       {

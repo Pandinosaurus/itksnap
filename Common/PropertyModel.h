@@ -317,10 +317,6 @@ public:
   virtual bool isAtomic() { return true; }
 };
 
-
-
-
-
 /**
   This is an implementation of the domain that wraps around an stl::vector
   of descriptors. TVal should be an integer type that can be used as an index
@@ -626,7 +622,7 @@ public:
   itkTypeMacro(ConcretePropertyModel, AbstractPropertyModel)
   itkNewMacro(Self)
 
-  virtual bool GetValueAndDomain(TVal &value, TDomain *domain) ITK_OVERRIDE
+  virtual bool GetValueAndDomain(TVal &value, TDomain *domain) override
   {
     value = m_Value;
     if(domain)
@@ -698,6 +694,26 @@ protected:
     { return this->m_##name##Model->GetValue(); } \
   virtual AbstractPropertyModel<type, domaintype> * Get##name##Model () const \
     { return this->m_##name##Model; }
+
+// A macro to generate functions GetXXX(), SetXXX() and GetXXXModel() in a class
+// that contains a ConcretePropertyModel of a certain type named m_XXXModel
+#define irisReadOnlyRangedPropertyAccessMacro(name,type) \
+  virtual type Get##name () const \
+{ return this->m_##name##Model->GetValue(); } \
+  virtual AbstractPropertyModel<type, NumericValueRange<type> > * Get##name##Model () const \
+{ return this->m_##name##Model; }
+
+#define irisReadOnlySimplePropertyAccessMacro(name,type) \
+  virtual type Get##name () const \
+{ return this->m_##name##Model->GetValue(); } \
+  virtual AbstractPropertyModel<type, TrivialDomain > * Get##name##Model () const \
+{ return this->m_##name##Model; }
+
+#define irisReadOnlyGenericPropertyAccessMacro(name,type,domaintype) \
+  virtual type Get##name () const \
+{ return this->m_##name##Model->GetValue(); } \
+  virtual AbstractPropertyModel<type, domaintype> * Get##name##Model () const \
+{ return this->m_##name##Model; }
 
 // A factory function to initialize properties - again, for shorter code
 template <class TVal>
@@ -804,9 +820,6 @@ MAKE_TYPEDEF_PM_RANGED(Vector4i,        IntVec4)
 MAKE_TYPEDEF_PM_RANGED(Vector2ui,       UIntVec2)
 MAKE_TYPEDEF_PM_RANGED(Vector3ui,       UIntVec3)
 MAKE_TYPEDEF_PM_RANGED(Vector4ui,       UIntVec4)
-MAKE_TYPEDEF_PM_RANGED(Vector2b,        BooleanVec2)
-MAKE_TYPEDEF_PM_RANGED(Vector3b,        BooleanVec3)
-MAKE_TYPEDEF_PM_RANGED(Vector4b,        BooleanVec4)
 
 // Macros for non-ranged types
 MAKE_TYPEDEF_PM_NONRNG(std::string,     String)
@@ -892,7 +905,7 @@ public:
   }
 
 
-  bool GetValueAndDomain(TVal &value, TDomain *domain) ITK_OVERRIDE
+  bool GetValueAndDomain(TVal &value, TDomain *domain) override
   {
     // This is important! Before calling the getter function, we should allow
     // the model to respond to whatever events it may have received that led
@@ -904,7 +917,7 @@ public:
     return m_GetterTraits.GetValueAndDomain(m_Model, m_Getter, value, domain);
   }
 
-  void SetValue(TVal value) ITK_OVERRIDE
+  void SetValue(TVal value) override
   {
     if(m_Setter)
       {
@@ -1285,7 +1298,7 @@ public:
     AbstractModel::Rebroadcast(m_ParentModel, ValueChangedEvent(), ValueChangedEvent());
   }
 
-  bool GetValueAndDomain(TMember &value, TDomain *domain) ITK_OVERRIDE
+  bool GetValueAndDomain(TMember &value, TDomain *domain) override
   {
     TStruct parentValue;
     if(m_ParentModel && m_ParentModel->GetValueAndDomain(parentValue,  NULL))
@@ -1304,7 +1317,7 @@ public:
     return false;
   }
 
-  void SetValue(TMember value) ITK_OVERRIDE
+  void SetValue(TMember value) override
   {
     TStruct parentValue;
     if(m_ParentModel && m_ParentModel->GetValueAndDomain(parentValue,  NULL))

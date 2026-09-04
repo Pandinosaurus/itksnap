@@ -4,16 +4,156 @@
 #include <string>
 #include <cstdarg>
 #include <map>
+#include <mutex>
+
+/** Engine based on CURLSH for storing cookies in memory */
+template <class ServerTraits>
+class RESTSharedData
+{
+public:
+  RESTSharedData();
+  ~RESTSharedData();
+
+  void *GetShare() const { return m_CurlShare; }
+
+protected:
+  void *m_CurlShare = nullptr;
+  std::mutex m_Mutex;
+
+};
+
+/*
+class CURLSHCookieJar
+{
+public:
+  CURLSHCookieJar();
+  ~CURLSHCookieJar();
+
+  void Setup(void *handle, const char *url, bool read_only);
+
+protected:
+  CURLSH *m_CurlShare = nullptr;
+  std::mutex m_Mutex;
+};
+
+class FileBasedCookieJar
+{
+public:
+  static void Setup(void *handle, const char *url, const char *datadir, bool read_only);
+protected:
+};
+*/
+
+/** Default traits that can be used to connect to any HTTP/HTTPS server */
+class GenericServerTraits
+{
+public:
+  constexpr static bool IncludeCookiesInCurlShare = false;
+  constexpr static bool IncludeSSLSessionInCurlShare = true;
+
+  void        SetServerURL(const char *baseurl) {}
+  std::string GetServerURL() { return std::string(); }
+  void        SetupCookies(void *share, void *handle, const char *url, bool receive_cookie_mode);
+};
+
+
+/** Distributed segmentation service */
+class DSSServerTraits
+{
+public:
+  static constexpr char DirectoryPrefix[] = "~/.alfabis";
+  static constexpr char ServerURLEnvironmentVariable[] = "ITKSNAP_WT_DSS_SERVER";
+  static constexpr bool UseGlobalServerURL = true;
+  constexpr static bool IncludeCookiesInCurlShare = false;
+  constexpr static bool IncludeSSLSessionInCurlShare = true;
+
+  void SetServerURL(const char *baseurl);
+  std::string GetServerURL();
+  void        SetupCookies(void *share, void *handle, const char *url, bool receive_cookie_mode);
+
+protected:
+  static std::string GetDataDirectory();
+
+  static std::string GetServerURLFile();
+
+};
+
+/** Deep Learning Segmentation Server */
+class DLSServerTraits
+{
+public:
+  static constexpr char DirectoryPrefix[] = "~/.itksnap_dls";
+  static constexpr bool UseGlobalServerURL = false;
+  constexpr static bool IncludeCookiesInCurlShare = true;
+  constexpr static bool IncludeSSLSessionInCurlShare = false;
+
+  void SetServerURL(const char *baseurl);
+
+  std::string GetServerURL();
+
+  void SetupCookies(void* share, void *handle, const char *url, bool receive_cookie_mode);
+
+protected:
+  std::string m_ServerURL;
+};
 
 /**
- * This class encapsulates the client side of the ALFABIS RESTful API.
- * It uses HTTP and CURL to communicate with the server
+ * This class encapsulates CURL MIME capabilities. Use it to send multipart
+ * data to the server.
  */
-class RESTClient
+class RESTMultipartData
 {
 public:
 
-  RESTClient();
+  void addString(const char *name, const char *mime_type, const std::string &content)
+  {
+    MimePart mp;
+    mp.mime_type = mime_type;
+    mp.value = content;
+    m_Parts[name] = mp;
+  }
+  void addBytes(const char *name, const char *mime_type, const char *filename, const char *content, size_t size)
+  {
+    MimePart mp;
+    mp.mime_type = mime_type;
+    mp.byte_array = content;
+    mp.byte_array_size = size;
+    mp.filename = filename;
+    m_Parts[name] = mp;
+  }
+
+protected:
+
+  struct MimePart
+  {
+    std::string mime_type, filename;
+    std::string value;
+    const char *byte_array = nullptr;
+    size_t byte_array_size = 0;
+  };
+
+  std::map<std::string, MimePart> m_Parts;
+
+  template <class ServerTraits> friend class RESTClient;
+};
+
+
+/**
+ * This class provides general functionality for communication with REST APIs
+ * and HTTP/HTTPS servers. It uses HTTP and CURL to communicate with the server.
+ *
+ * The ServerTraits template parameter allows to customize the behaviour of the client
+ * for specific servers, for example by providing a custom way to store cookies or the server URL.
+ *
+ *
+ */
+template <class ServerTraits = GenericServerTraits>
+class RESTClient
+{
+public:
+  using SharedData = RESTSharedData<ServerTraits>;
+
+  RESTClient(SharedData *sd = nullptr);
 
   ~RESTClient();
 
@@ -27,17 +167,10 @@ public:
   void SetOutputFile(FILE *outfile);
 
   /**
-   * Send the authentication data to the server and capture the cookie with the
-   * session ID. The cookie and the server URL will be stored in a .alfabis directory
-   * in user's home, so that subsequent calls do not require authentication
-   */
-  bool Authenticate(const char *baseurl, const char *token);
-
-  /**
    * This call will set the server URL for subsequent calls. Subsequent calls will fail
    * unless there is a cookie (session) present for the selected URL
    */
-  static void SetServerURL(const char *baseurl);
+  void SetServerURL(const char *baseurl);
 
   /**
    * Call this function prior to post if you want to open up the cookie jar to receive
@@ -66,17 +199,32 @@ public:
   bool PostVA(const char *rel_url, const char *post_string, std::va_list args);
 
   // Progress callback signature
-  typedef  void ( *ProgressCallbackFunction )(void *, double);
+  typedef  void ( *ProgressCallbackFunction )(void *, size_t, size_t);
 
   /**
    * Set the callback command for uploads and downloads
    */
   void SetProgressCallback(void *cb_data, ProgressCallbackFunction fn);
 
+  /**
+   * Unset the callback command
+   */
+  void RemoveProgressCallback();
+
   bool UploadFile(const char *rel_url, const char *filename,
     std::map<std::string,std::string> extra_fields, ...);
 
+  /**
+   * Upload raw bytes to the server, similar to file upload but without having
+   * to store the data on disk
+   */
+  bool PostMultipart(const char *rel_url, RESTMultipartData *data, ...);
+
   const char *GetOutput();
+
+  const char *GetErrorString() const;
+
+  long GetHTTPCode() const;
 
   std::string GetFormattedCSVOutput(bool header);
 
@@ -84,13 +232,50 @@ public:
 
   const char *GetUploadStatistics();
 
+  /**
+   * Read the value of the server URL from a file in the user's home directory
+   */
+  static std::string ReadServerURLFromFile();
+
+  /**
+   * Set an extra HTTP request header that will be sent with the next Get/Post
+   * call.  Setting the same name twice replaces the previous value.  Headers
+   * are NOT cleared automatically between calls; call ClearRequestHeaders()
+   * when they should no longer be sent.
+   */
+  void SetRequestHeader(const char *name, const char *value);
+
+  /** Remove all previously set extra request headers. */
+  void ClearRequestHeaders();
+
+  /**
+   * When set to true, libcurl automatically follows HTTP 3xx redirects.
+   * The Authorization header is NOT forwarded to the redirect target
+   * (libcurl's default safe behaviour), so this is safe for ticket-based
+   * Flywheel downloads that redirect to pre-signed S3 URLs.
+   */
+  void SetFollowRedirects(bool follow);
+
+
+  /**
+   * Retrieve a response header received during the last Get/Post call.
+   * @p name is matched case-insensitively (HTTP headers are case-insensitive).
+   * Returns "" when the header was not present.
+   */
+  std::string GetResponseHeader(const char *name) const;
+
 protected:
+  /** The traits object - implementation specific data */
+  ServerTraits m_Traits;
 
   /** The CURL handle */
   void *m_Curl;
 
-  /** The sharing handle */
-  void *m_Share;
+  /** The CURL multi-handle */
+  void *m_CurlMulti;
+
+  /** The shared data */
+  SharedData *m_SharedData = nullptr;
 
   /** Optional file for output */
   FILE *m_OutputFile;
@@ -111,26 +296,58 @@ protected:
   char *m_ErrorBuffer;
 
   bool m_ReceiveCookieMode;
+  bool m_FollowRedirects = false;
 
   /** Callback stuff */
   std::pair<void *, ProgressCallbackFunction> m_CallbackInfo;
 
-  static std::string GetDataDirectory();
+  static std::string GetCookieFile(const char *server_url);
 
-  static std::string GetCookieFile();
+  std::string GetServerURL();
 
-  static std::string GetServerURLFile();
+  /** Extra headers added by SetRequestHeader(), sent with every request. */
+  std::map<std::string, std::string> m_ExtraRequestHeaders;
 
-  static std::string GetServerURL();
+  /** Response headers captured from the last request (lowercase names). */
+  std::map<std::string, std::string> m_ResponseHeaders;
+
+  static size_t HeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata);
+
+  /**
+   * Build the full URL for a request. When a server base URL is set (DSS, DLS traits),
+   * the rel_url is appended as a relative path: "<base>/<rel_url>". When no base URL
+   * is set (GenericServerTraits), rel_url is used as-is, allowing callers to pass a
+   * complete URL such as "https://example.org/data/brain.nii.gz".
+   */
+  std::string MakeFullURL(const std::string &rel_url);
 
   static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
   static size_t WriteToFileCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
+  void SetupCookies(bool receive_cookie_mode);
 
-
+  /**
+   * This function performs the multi-perform loop, calling the registered callback at
+   * regular intervals, to allow the GUI to refresh regularly
+   */
+  void CurlMultiPerform();
 };
 
+class DSSRESTClient : public RESTClient<DSSServerTraits>
+{
+public:
+  using Superclass = RESTClient<DSSServerTraits>;
+  DSSRESTClient(SharedData *sd = nullptr) : Superclass(sd) {}
+  ~DSSRESTClient() = default;
+
+  /**
+   * Send the authentication data to the server and capture the cookie with the
+   * session ID. The cookie and the server URL will be stored in a .alfabis directory
+   * in user's home, so that subsequent calls do not require authentication
+   */
+  bool Authenticate(const char *token);
+};
 
 
 #endif // RESTCLIENT_H

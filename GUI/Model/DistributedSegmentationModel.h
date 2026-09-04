@@ -59,7 +59,7 @@ struct AuthResponse
   AuthResponse() : status(AUTH_NOT_CONNECTED) {}
 
   bool operator != (const AuthResponse &o) const
-    { return status != o.status && user_email != o.user_email; }
+    { return status != o.status || user_email != o.user_email; }
 };
 
 /** Structure describing a single service summary */
@@ -264,7 +264,7 @@ public:
   bool CheckState(UIState state);
 
   /** Respond to events from up-stream models */
-  virtual void OnUpdate() ITK_OVERRIDE;
+  virtual void OnUpdate() override;
 
   /** Server URL property model */
   typedef STLVectorWrapperItemSetDomain<int, std::string> ServerURLDomain;
@@ -322,6 +322,9 @@ public:
 
   /** The status of the currently selected ticket */
   irisSimplePropertyAccessMacro(SelectedTicketStatus, dss_model::TicketStatus)
+
+  /** The service name of the currently selected ticket */
+  irisSimplePropertyAccessMacro(SelectedTicketServiceName, std::string)
 
   /** Log messages from the current ticket */
   typedef STLVectorWrapperItemSetDomain<dss_model::IdType, dss_model::TicketLogEntry> LogDomainType;
@@ -458,6 +461,10 @@ protected:
   SmartPtr<CurrentTagWorkspaceObjectModel> m_CurrentTagWorkspaceObjectModel;
   bool GetCurrentTagWorkspaceObjectValueAndRange(unsigned long &value, LayerSelectionDomain *range);
   void SetCurrentTagWorkspaceObjectValue(unsigned long value);
+
+  // Stuff about the current ticket
+  SmartPtr<AbstractSimpleStringProperty> m_SelectedTicketServiceNameModel;
+  bool GetSelectedTicketServiceNameValue(std::string &value);
 
   // Stuff about the current ticket
   SmartPtr<ConcreteRangedDoubleProperty> m_SelectedTicketProgressModel;

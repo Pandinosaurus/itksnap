@@ -152,26 +152,6 @@ public:
   }
 };
 
-template<class TAtomic>
-class StringRowDescriptionTraits
-{
-public:
-  static QString GetText(TAtomic label, const std::string &text)
-  {
-    return QString(text.c_str());
-  }
-
-  static QIcon GetIcon(TAtomic label, const std::string &text)
-  {
-    return QIcon();
-  }
-
-  static QVariant GetIconSignature(TAtomic label, const std::string &text)
-  {
-    return QVariant(0);
-  }
-};
-
 // TODO: this stuff should be replaced by coupling with the abstract item model
 // Specific traits for filling drawing color label combos
 class DrawingColorRowDescriptionTraits
@@ -310,7 +290,7 @@ public:
     m_ActionValues.push_back(value);
   }
 
-  virtual void SetDomain(QComboBox *w, const TDomain &domain) ITK_OVERRIDE
+  virtual void SetDomain(QComboBox *w, const TDomain &domain) override
   {
     // Fill out the domain as is
     Superclass::SetDomain(w, domain);

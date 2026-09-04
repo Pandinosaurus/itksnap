@@ -31,7 +31,6 @@
 #include "GlobalState.h"
 #include "SNAPCommon.h"
 
-class GenericSliceView;
 class SliceViewPanel;
 class GlobalUIModel;
 class QDockWidget;
@@ -57,6 +56,8 @@ class SmoothLabelsDialog;
 class ImageIOWizard;
 class ImageIOWizardModel;
 class DistributedSegmentationDialog;
+
+class ProgressReportWidget;
 
 class QTimer;
 
@@ -90,8 +91,12 @@ public:
   // Initiate active contour segmentation
   void OpenSnakeWizard();
 
-  // Load a drag-n-dropped file
-  void LoadDroppedFile(QString file);
+  /*
+   * Load a drag-n-dropped file or file opened through the OS URL mechanism.
+   * @p dragged_to_window specifies whether the file was actually dragged to
+   * this window or opened via MacOS open command or Windows URL
+   */
+  void LoadDroppedFile(QString file, bool dragged_to_window);
 
   // Export a screenshot from one of the panels
   void ExportScreenshot(int panelIndex);
@@ -120,6 +125,9 @@ public:
   // Get the layer inspector
   LayerInspectorDialog *GetLayerInspector();
 
+  // Get the preferences dialog
+  PreferencesDialog *GetPreferencesDialog() const;
+
   /** Check for updates (automatically at regular periods) */
   void UpdateAutoCheck();
 
@@ -132,6 +140,9 @@ public:
 
   /** Save the project (interactively or not) */
   bool SaveWorkspace(bool interactive);
+
+  // TODO: remove this, meant to be temporary for testing
+  ProgressReportWidget *GetProgressWidget() const { return m_ProgressFader; }
 
 public slots:
 
@@ -306,6 +317,8 @@ private slots:
 
   void on_actionNew_ITK_SNAP_Window_triggered();
 
+  void onWindowMenuAboutToShow();
+
   void on_actionUnload_All_Overlays_triggered();
 
   void on_actionToggleLayerLayout_triggered();
@@ -356,6 +369,8 @@ private slots:
 
   void on_actionFree_Rotation_Mode_triggered();
 
+  void onIPCDrop();
+
 protected:
 
   // bool eventFilter(QObject *obj, QEvent *event);
@@ -378,6 +393,7 @@ private:
   void UpdateLayerLayoutActions();
   void UpdateSelectedLayerActions();
   void UpdateDICOMContentsMenu();
+  void UpdateViewPanelVisibility();
 
   // Raise a dialog (equivalent to calling show, raise, activateWindow)
   void RaiseDialog(QDialog *dialog);
@@ -412,6 +428,9 @@ private:
 
   // Progress dialog
   QProgressDialog *m_Progress;
+
+  // New progress reporter widget
+  ProgressReportWidget *m_ProgressFader;
 
   // IRIS main toolbox (in left dock)
   MainControlPanel *m_ControlPanel;

@@ -16,7 +16,8 @@
 #include <QGraphicsScene>
 #include <QGraphicsDropShadowEffect>
 #include <QDateTime>
-
+#include <QToolButton>
+#include "SNAPQtCommonTranslations.h"
 
 #include "QtCursorOverride.h"
 #include "GlobalUIModel.h"
@@ -28,6 +29,7 @@
 #include "ColorMap.h"
 #include "ColorMapModel.h"
 #include "ImageIOWizard.h"
+
 
 
 QIcon CreateColorBoxIcon(int w, int h, const QBrush &brush)
@@ -109,20 +111,53 @@ QIcon CreateColorMapIcon(int w, int h, ColorMap *cmap)
   return icon;
 }
 
-QStandardItem *CreateColorMapPresetItem(
-    ColorMapModel *cmm, const std::string &preset)
+std::map<std::string, std::string> &
+QtColorMapPresetHelper::GetColorMapTranslations()
 {
+  static std::map<std::string, std::string> color_map_translations;
+  if(color_map_translations.empty())
+  {
+    auto *source = QtColorMapPresetHelper::GetColorMapPresetNameSource();
+    for(unsigned int i = ColorMap::COLORMAP_GREY; i < ColorMap::COLORMAP_CUSTOM; i++)
+    {
+      auto preset_id = (ColorMap::SystemPreset)(i);
+      color_map_translations[source->GetPresetName(preset_id, false)] = source->GetPresetName(preset_id, true);
+    }
+  }
+
+  return color_map_translations;
+}
+
+QStandardItem *
+QtColorMapPresetHelper::CreateColorMapPresetItem(ColorMapModel *cmm, const std::string &preset)
+{
+  // Translate the English preset string to the current locale
+  auto &tran = GetColorMapTranslations();
+
+  QString preset_tr = GetTranslatedPresetName(preset);
+
   ColorMap *cm = cmm->GetPresetManager()->GetPreset(preset);
   QIcon icon = CreateColorMapIcon(16, 16, cm);
 
-  QStandardItem *item = new QStandardItem(icon, from_utf8(preset));
+  QStandardItem *item = new QStandardItem(icon, preset_tr);
   item->setData(QVariant::fromValue(preset), Qt::UserRole);
 
   return item;
 }
 
+QString
+QtColorMapPresetHelper::GetTranslatedPresetName(const std::string &preset)
+{
+  auto &tran = GetColorMapTranslations();
+  std::string preset_tr = preset;
+  if(tran.find(preset) != tran.end())
+    preset_tr = tran[preset];
+  return QString::fromStdString(preset_tr);
+}
+
+
 void
-PopulateColorMapPresetCombo(QComboBox *combo, ColorMapModel *model)
+QtColorMapPresetHelper::PopulateColorMapPresetCombo(QComboBox *combo, ColorMapModel *model)
 {
   // Get the list of system presets and custom presets from the model
   ColorMapModel::PresetList pSystem, pUser;
@@ -190,14 +225,14 @@ QString GetTitleForColorLabel(const ColorLabel &cl)
 QString GetTitleForDrawOverFilter(DrawOverFilter flt, const ColorLabel &cl)
 {
   switch(flt.CoverageMode)
-    {
+  {
     case PAINT_OVER_VISIBLE:
-      return QString("All visible labels");
+      return QCoreApplication::translate("SNAPQtCommon", "All visible labels");
     case PAINT_OVER_ONE:
       return QString::fromUtf8(cl.GetLabel());
     case PAINT_OVER_ALL:
-      return QString("All labels");
-    }
+      return QCoreApplication::translate("SNAPQtCommon", "All labels");
+  }
   return QString();
 }
 
@@ -251,61 +286,72 @@ QIcon CreateLabelComboIcon(int w, int h, LabelType fg, DrawOverFilter bg, ColorL
 
 QString CreateLabelComboTooltip(LabelType fg, DrawOverFilter bg, ColorLabelTable *clt)
 {
-  /*
-  return QString(
-        "<html><head/><body>"
-        "<p>Foreground label:<br><span style=\" font-weight:600;\">%1</span></p>"
-        "<p>Background label:<br><span style=\" font-weight:600;\">%2</span></p>"
-        "</body></html>").
-      arg(GetTitleForColorLabel(fg, clt)).arg(GetTitleForDrawOverFilter(bg, clt)); */
-
-  return QString(
-        "<html><body>"
-        "Set active label to <span style=\" font-weight:600;\">%1</span> "
-        " and the paint over mask to <span style=\" font-weight:600;\">%2</span>.").
-      arg(GetTitleForColorLabel(fg, clt)).arg(GetTitleForDrawOverFilter(bg, clt));
+  return QCoreApplication::translate(
+           "SNAPQtCommon",
+           "<html><body>"
+           "Set active label to <span style=\" font-weight:600;\">%1</span> "
+           " and the paint over mask to <span style=\" font-weight:600;\">%2</span>.")
+    .arg(GetTitleForColorLabel(fg, clt), GetTitleForDrawOverFilter(bg, clt));
 }
 
 
-
-
-
-
-QAction *FindUpstreamAction(QWidget *widget, const QString &targetActionName)
+template <class TWidget>
+TWidget *FindUpstreamWidget(QWidget *widget, const QString &name)
 {
   // Look for a parent of QMainWindow type
   QMainWindow *topwin = NULL;
   for(QObject *p = widget; p != NULL; p = p->parent())
-    {
+  {
     if((topwin = dynamic_cast<QMainWindow *>(p)) != NULL)
       break;
-    }
+  }
 
   // If nothing found, try a global search
   if(!topwin)
-    {
+  {
     QWidgetList lst = QApplication::topLevelWidgets();
     for(QWidgetList::Iterator it = lst.begin();
-        it != lst.end(); ++it)
-      {
+         it != lst.end(); ++it)
+    {
       QWidget *w = *it;
       if((topwin = dynamic_cast<QMainWindow *>(w)) != NULL)
         break;
-      }
     }
+  }
 
   // Look for the action
-  QAction *result = NULL;
+  TWidget *result = NULL;
   if(topwin)
-    {
-    result = topwin->findChild<QAction *>(targetActionName);
-    }
+  {
+    result = topwin->findChild<TWidget *>(name);
+  }
 
   if(!result)
-      std::cerr << "Failed find upstream action " << targetActionName.toStdString() << std::endl;
+    std::cerr << "Failed find upstream widget " << name.toStdString() << std::endl;
 
   return result;
 }
+
+
+QAction *FindUpstreamAction(QWidget *widget, const QString &targetActionName)
+{
+  return FindUpstreamWidget<QAction>(widget, targetActionName);
+}
+
+QDialog *FindUpstreamDialog(QWidget *widget, const QString &targetActionName)
+{
+  return FindUpstreamWidget<QDialog>(widget, targetActionName);
+}
+
+QWindow* FindUpstreamWindowHandle(QWidget *widget)
+{
+  // Find an upstream window that has a window handle
+  for(QWidget *w = widget; w != nullptr; w = w->parentWidget())
+    if(w->windowHandle())
+      return w->windowHandle();
+  return nullptr;
+}
+
 
 void ConnectWidgetToTopLevelAction(
     QWidget *w, const char *signal, QString actionName)
@@ -340,12 +386,11 @@ QStringList toQStringList(const std::vector<std::string> inlist)
 }
 
 void ReportNonLethalException(QWidget *parent,
-                              std::exception &exc,
+                              const std::exception &exc,
                               QString windowTitleText,
                               QString mainErrorText)
 {
   QMessageBox b(parent);
-
   b.setWindowTitle(QString("%1 - ITK-SNAP").arg(windowTitleText));
   if(mainErrorText.isNull())
     {
@@ -585,11 +630,96 @@ void TranslateChildTooltipKeyModifiers(QWidget *parent)
     }
 }
 
-QString get_user_friendly_date_string(const QDateTime &dt)
+QString
+get_user_friendly_date_string(const QDateTime &dt)
 {
-  QDateTime dt_local = dt.toTimeSpec(Qt::LocalTime);
-  int date_diff = abs(QDateTime::currentDateTime().daysTo(dt_local));
-  QString t_date = dt_local.toString(
-                     date_diff == 0 ? "hh:mm" : date_diff <= 365 ? "MMM d hh:mm" : "MMM d yyyy hh:mm");
+  QDateTime dt_local = dt.toTimeZone(QDateTime::currentDateTime().timeZone());
+  int       date_diff = abs(QDateTime::currentDateTime().daysTo(dt_local));
+  QString   t_date = dt_local.toString(date_diff == 0     ? "hh:mm"
+                                     : date_diff <= 365 ? "MMM d hh:mm"
+                                                        : "MMM d yyyy hh:mm");
   return t_date;
+}
+
+class QtColorMapPresetNameSource : public AbstractColorMapPresetNameSource
+{
+public:
+  virtual std::string GetPresetName(ColorMap::SystemPreset preset, bool translated) override
+  {
+    static const char *preset_names[] = {
+      QT_TRANSLATE_NOOP("ColorMap", "Grayscale"),
+      QT_TRANSLATE_NOOP("ColorMap", "Jet"),
+      QT_TRANSLATE_NOOP("ColorMap", "Hot"),
+      QT_TRANSLATE_NOOP("ColorMap", "Cool"),
+      QT_TRANSLATE_NOOP("ColorMap", "Black to red"),
+      QT_TRANSLATE_NOOP("ColorMap", "Black to green"),
+      QT_TRANSLATE_NOOP("ColorMap", "Black to blue"),
+      QT_TRANSLATE_NOOP("ColorMap", "Spring"),
+      QT_TRANSLATE_NOOP("ColorMap", "Summer"),
+      QT_TRANSLATE_NOOP("ColorMap", "Autumn"),
+      QT_TRANSLATE_NOOP("ColorMap", "Winter"),
+      QT_TRANSLATE_NOOP("ColorMap", "Copper"),
+      QT_TRANSLATE_NOOP("ColorMap", "HSV"),
+      QT_TRANSLATE_NOOP("ColorMap", "Blue to white to red"),
+      QT_TRANSLATE_NOOP("ColorMap", "Red to white to blue"),
+      QT_TRANSLATE_NOOP("ColorMap", "Speed image (blue to black to white)"),
+      QT_TRANSLATE_NOOP("ColorMap", "Speed image (semi-transparent overlay)"),
+      QT_TRANSLATE_NOOP("ColorMap", "Level set image"),
+      QT_TRANSLATE_NOOP("ColorMap", "Custom")
+    };
+
+    if(translated)
+      return QCoreApplication::translate("ColorMap", preset_names[preset]).toStdString();
+    else
+      return preset_names[preset];
+  }
+};
+
+AbstractColorMapPresetNameSource *
+QtColorMapPresetHelper::GetColorMapPresetNameSource()
+{
+  static QtColorMapPresetNameSource source;
+  return &source;
+}
+
+QToolButton *
+CreateContextToolButton(QWidget *parent)
+{
+  auto *button = new QToolButton(parent);
+  button->setIcon(QIcon(":/root/context_gray_10.png"));
+  button->setVisible(false);
+  button->setAutoRaise(true);
+  button->setIconSize(QSize(10,10));
+  button->setMinimumSize(QSize(16,16));
+  button->setMaximumSize(QSize(16,16));
+  button->setPopupMode(QToolButton::InstantPopup);
+  button->setStyleSheet("QToolButton::menu-indicator { image: none; }");
+  return button;
+}
+
+void
+DeepCopyMenuActions(QMenu *src, QMenu *trg)
+{
+  QList<QAction*> actions = src->actions();
+  for (const auto &it : std::as_const(actions))
+  {
+    QAction *action = it;
+    if(!action)
+      continue;
+    /*if (action->menu())
+    {
+      // Create a new menu and recursively copy its actions
+      QMenu *new_menu = trg->addMenu(action->text());
+      new_menu->setIcon(action->icon());
+      new_menu->setToolTip(action->toolTip());
+      new_menu->setStatusTip(action->statusTip());
+      new_menu->setVisible(action->isVisible())
+      DeepCopyMenuActions(action->menu(), new_menu);
+    }*/
+    else
+    {
+      // Create a new action and copy properties
+      trg->addAction(action);
+    }
+  }
 }

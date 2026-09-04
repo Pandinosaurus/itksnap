@@ -77,7 +77,7 @@ void MeshImportFileSelectionPage::initializePage()
     // Create the file panel
     ui->filePanel->initializeForOpenFile(
           m_Model->GetParentModel(),
-          "Mesh file name: ",
+          tr("Mesh file name: "),
           from_utf8(m_Model->GetHistoryName()),
           filter,
           QString(), from_utf8(domain[GuidedMeshIO::FORMAT_VTK]));
@@ -87,16 +87,16 @@ void MeshImportFileSelectionPage::initializePage()
     // Create directory file panel
     ui->filePanel->initializeForOpenFiles(
           m_Model->GetParentModel(),
-          "Mesh series files: ",
+          tr("Mesh series files: "),
           from_utf8(m_Model->GetHistoryName()),
           filter,
           QString(), from_utf8(domain[GuidedMeshIO::FORMAT_VTK]));
     }
 }
 
-QString GetErrorText(std::string input)
+QString GetErrorText(QString input)
 {
-  return QString("<span style=\" color:#7f0000;\">%1</span>").arg(input.c_str());
+  return QString("<span style=\" color:#7f0000;\">%1</span>").arg(input);
 }
 
 
@@ -118,7 +118,7 @@ bool MeshImportFileSelectionPage::validatePage()
       filenames.push_back(ui->filePanel->absoluteFilename());
     else
       {
-      ui->lblMessage->setText(GetErrorText("File does not exist!"));
+      ui->lblMessage->setText(GetErrorText(tr("File does not exist!")));
       return false;
       }
     }
@@ -127,12 +127,13 @@ bool MeshImportFileSelectionPage::validatePage()
   auto nt = m_Model->GetParentModel()->GetDriver()->GetNumberOfTimePoints();
   if (nt < filenames.length())
     {
-    std::ostringstream oss;
-    oss << "Number of selected files (" << filenames.length()
-        << ") cannot exceed the number of time points (" << nt << ")!";
-    ui->lblMessage->setText(GetErrorText(oss.str()));
-    ui->lblMessage->setWordWrap(true);
-    return false;
+      QString error_str =
+        tr("Number of selected files (%1) cannot exceed the number of time points (%2)!")
+          .arg(filenames.length())
+          .arg(nt);
+      ui->lblMessage->setText(GetErrorText(error_str));
+      ui->lblMessage->setWordWrap(true);
+      return false;
     }
 
   // Start loading
@@ -186,7 +187,7 @@ bool MeshImportFileSelectionPage::validatePage()
 
   if (fn_list.size() > 1)
     {
-    msgBox->setText("How do you want the mesh series to be loaded?");
+    msgBox->setText(tr("How do you want the mesh series to be loaded?"));
     std::ostringstream oss;
     oss << "From Current Time Point (" << displayTP << ")";
     btnSeriesFromTP = msgBox->addButton(tr(oss.str().c_str()), QMessageBox::ActionRole);
@@ -194,7 +195,7 @@ bool MeshImportFileSelectionPage::validatePage()
     }
   else
     {
-    msgBox->setText("How do you want the mesh to be loaded?");
+    msgBox->setText(tr("How do you want the mesh to be loaded?"));
     std::ostringstream oss;
     oss << "To Current Time Point (" << displayTP << ")";
     btnLoadTP = msgBox->addButton(tr(oss.str().c_str()), QMessageBox::ActionRole);

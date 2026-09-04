@@ -4,19 +4,16 @@
 #include "IRISException.h"
 #include "IRISApplication.h"
 #include "GenericImageData.h"
-#include "IRISImageData.h"
 #include "SNAPImageData.h"
 #include "ImageWrapperBase.h"
 #include "MeshManager.h"
 #include "Window3DPicker.h"
-#include "vtkRenderWindow.h"
-#include "vtkRendererCollection.h"
-#include "vtkRenderWindowInteractor.h"
-#include "vtkPointData.h"
-#include "MeshOptions.h"
 #include "ImageWrapperTraits.h"
 #include "SegmentationUpdateIterator.h"
 #include "ImageMeshLayers.h"
+#include "itkImage.h"
+#include "MeshOptions.h"
+#include "ImageRayIntersectionFinder.h"
 
 // All the VTK stuff
 #include "vtkPolyData.h"
@@ -39,17 +36,32 @@ Generic3DModel::Generic3DModel()
   // Continuous update model
   m_ContinuousUpdateModel = NewSimpleConcreteProperty(false);
 
-  // Display Color Bar model
-  m_DisplayColorBarModel = NewSimpleConcreteProperty(false);
+  // Display Color Bar models
+  m_ColorBarEnabledByUserModel = NewSimpleConcreteProperty(true);
+  m_ColorBarVisibleModel = wrapGetterSetterPairAsProperty(this, &Self::GetColorBarVisibleValue);
+  m_ColorBarVisibleModel->RebroadcastFromSourceProperty(m_ColorBarEnabledByUserModel);
+
+  // Selected layer Id model
+  m_SelectedMeshLayerModel = wrapGetterSetterPairAsProperty(
+    this, &Self::GetSelectedMeshLayerValueAndRange, &Self::SetSelectedMeshLayerValue);
+
+  // Focal point model
+  FocalPointTargetDomain focal_point_domain;
+  focal_point_domain[FOCAL_POINT_CURSOR] = FOCAL_POINT_CURSOR;
+  focal_point_domain[FOCAL_POINT_MAIN_IMAGE_CENTER] = FOCAL_POINT_MAIN_IMAGE_CENTER;
+  focal_point_domain[FOCAL_POINT_ACTIVE_MESH_LAYER_CENTER] = FOCAL_POINT_ACTIVE_MESH_LAYER_CENTER;
+  m_FocalPointTargetModel = NewConcreteProperty(FOCAL_POINT_CURSOR, focal_point_domain);
 
   // Scalpel
   m_ScalpelStatus = SCALPEL_LINE_NULL;
 
   // Reset clear time
   m_ClearTime = 0;
+
+  // Initialize mesh-update flag
+  m_MeshUpdating = false;
 }
 
-#include "itkImage.h"
 
 void Generic3DModel::Initialize(GlobalUIModel *parent)
 {
@@ -70,6 +82,12 @@ void Generic3DModel::Initialize(GlobalUIModel *parent)
   Rebroadcast(m_Driver, SegmentationChangeEvent(), StateMachineChangeEvent());
   Rebroadcast(m_Driver, LevelSetImageChangeEvent(), StateMachineChangeEvent());
 
+  // Listen to layer change events that may indicate new mesh has been loaded
+  m_SelectedMeshLayerModel->Rebroadcast(GetMeshLayers(), ActiveLayerChangeEvent(), ValueChangedEvent());
+  m_SelectedMeshLayerModel->Rebroadcast(GetMeshLayers(), LayerChangeEvent(), ValueChangedEvent());
+  m_SelectedMeshLayerModel->Rebroadcast(GetMeshLayers(), LayerChangeEvent(), DomainChangedEvent());
+  m_SelectedMeshLayerModel->Rebroadcast(GetMeshLayers(), WrapperMetadataChangeEvent(), DomainDescriptionChangedEvent());
+
   // Rebroadcast model change events as state changes
   Rebroadcast(this, ModelUpdateEvent(), StateMachineChangeEvent());
   Rebroadcast(this, SprayPaintEvent(), StateMachineChangeEvent());
@@ -79,23 +97,23 @@ void Generic3DModel::Initialize(GlobalUIModel *parent)
   Rebroadcast(m_ParentUI->GetGlobalState()->GetMeshOptions(),
               ChildPropertyChangedEvent(), StateMachineChangeEvent());
 
-  Rebroadcast(m_Driver->GetIRISImageData()->GetMeshLayers(), LayerChangeEvent(), StateMachineChangeEvent());
+  Rebroadcast(m_Driver, LayerChangeEvent(), StateMachineChangeEvent());
+  Rebroadcast(m_Driver, ActiveLayerChangeEvent(), StateMachineChangeEvent());
 }
 
-bool Generic3DModel::CheckState(Generic3DModel::UIState state)
+bool
+Generic3DModel::CheckState(Generic3DModel::UIState state)
 {
-  if(!m_ParentUI->GetDriver()->IsMainImageLoaded())
+  if (!m_ParentUI->GetDriver()->IsMainImageLoaded())
     return false;
 
   ToolbarMode3DType mode = m_ParentUI->GetGlobalState()->GetToolbarMode3D();
-  ImageMeshLayers *layer = m_Driver->IsSnakeModeActive() ?
-        m_Driver->GetSNAPImageData()->GetMeshLayers():
-        m_Driver->GetIRISImageData()->GetMeshLayers();
+  ImageMeshLayers  *layer = m_Driver->GetCurrentImageData()->GetMeshLayers();
 
-  switch(state)
-    {
+  switch (state)
+  {
     case UIF_MESH_DIRTY:
-      {
+    {
       bool ret = layer->IsActiveMeshLayerDirty();
 
       // clearing time
@@ -103,29 +121,41 @@ bool Generic3DModel::CheckState(Generic3DModel::UIState state)
         ret = true;
 
       return ret;
-      }
+    }
 
     case UIF_MESH_ACTION_PENDING:
-      {
-      if(mode == SPRAYPAINT_MODE)
+    {
+      if (mode == SPRAYPAINT_MODE)
         return m_SprayPoints->GetNumberOfPoints() > 0;
 
       else if (mode == SCALPEL_MODE)
         return m_ScalpelStatus == SCALPEL_LINE_COMPLETED;
 
-      else return false;
-      }
+      else
+        return false;
+    }
+
+    case UIF_MESH_EXTERNAL:
+    {
+      auto mesh = GetMeshLayers()->GetLayer(GetMeshLayers()->GetActiveLayerId());
+      return mesh && mesh->IsExternalLoadable();
+    }
 
     case UIF_CAMERA_STATE_SAVED:
-      {
+    {
       return m_Renderer->IsSavedCameraStateAvailable();
-      }
+    }
 
     case UIF_FLIP_ENABLED:
-      {
+    {
       return mode == SCALPEL_MODE && m_ScalpelStatus == SCALPEL_LINE_COMPLETED;
-      }
     }
+
+    case UIF_MULTIPLE_MESHES:
+    {
+      return m_Driver->GetCurrentImageData()->GetMeshLayers()->GetLayerIds().size() > 1;
+    }
+  }
 
   return false;
 }
@@ -178,7 +208,7 @@ void Generic3DModel::ExportMesh(const MeshExportSettings &settings)
     // TODO: temporarily commented, needs to be fixed!
     vtkSmartPointer<vtkVRMLExporter> exporter = vtkSmartPointer<vtkVRMLExporter>::New();
     exporter->SetFileName(settings.GetMeshFileName().c_str());
-    exporter->SetInput(m_Renderer->GetRenderWindow());
+    exporter->SetRenderWindow(m_Renderer->GetRenderWindow());
     exporter->Update();
     return;
     }
@@ -192,9 +222,7 @@ ImageMeshLayers *
 Generic3DModel
 ::GetMeshLayers()
 {
-  return m_Driver->IsSnakeModeActive() ?
-        m_Driver->GetSNAPImageData()->GetMeshLayers() :
-        m_Driver->GetIRISImageData()->GetMeshLayers();
+  return m_Driver->GetCurrentImageData()->GetMeshLayers();
 }
 
 vtkPolyData *Generic3DModel::GetSprayPoints() const
@@ -224,9 +252,9 @@ void Generic3DModel::OnImageGeometryUpdate()
   // Update the world matrix and other stored variables
   if(m_Driver->IsMainImageLoaded())
     {
-    ImageWrapperBase *main = m_Driver->GetCurrentImageData()->GetMain();
-    m_WorldMatrix = main->GetNiftiSform();
-    m_WorldMatrixInverse = main->GetNiftiInvSform();
+    ImageWrapperBase *ref = m_Driver->GetCurrentImageData()->GetReferenceSpaceWrapper();
+    m_WorldMatrix = ref->GetNiftiSform();
+    m_WorldMatrixInverse = ref->GetNiftiInvSform();
     }
   else
     {
@@ -246,8 +274,7 @@ void Generic3DModel::UpdateSegmentationMesh(itk::Command *progressCmd)
     m_MeshUpdating = true;
 
     // Check if snake mode is active and get mode specific image data
-    GenericImageData *imgData = m_Driver->IsSnakeModeLevelSetActive() ?
-          (GenericImageData*) m_Driver->GetSNAPImageData() : m_Driver->GetIRISImageData();
+    GenericImageData *imgData = m_Driver->GetCurrentImageData();
 
     // Update Mesh Layer
     imgData->GetMeshLayers()->UpdateActiveMeshLayer(progressCmd);
@@ -390,17 +417,10 @@ void Generic3DModel::FlipAction()
 void Generic3DModel::ClearRenderingAction()
 {
   m_Renderer->ClearRendering();
-
-  ImageMeshLayers *layer = m_Driver->IsSnakeModeActive() ?
-        m_Driver->GetSNAPImageData()->GetMeshLayers():
-        m_Driver->GetIRISImageData()->GetMeshLayers();
-
-  m_ClearTime = layer->GetActiveMeshMTime();
+  m_ClearTime = GetMeshLayers()->GetActiveMeshMTime();
   InvokeEvent(ModelUpdateEvent());
 }
 
-#include "ImageRayIntersectionFinder.h"
-#include "SNAPImageData.h"
 
 /** These classes are used internally for m_Ray intersection testing */
 class LabelImageHitTester
@@ -468,16 +488,58 @@ bool Generic3DModel::IntersectSegmentation(int vx, int vy, double v_radius, int 
   m_Renderer->ComputeRayFromClick(vx, vy, x_world, ray_world, dx_world, dy_world);
 
   // Convert these to image coordinates
+  /*
   Vector3d x_image = affine_transform_point(m_WorldMatrixInverse, x_world);
   Vector3d ray_image = affine_transform_vector(m_WorldMatrixInverse, ray_world);
   Vector3d dx_image = affine_transform_vector(m_WorldMatrixInverse, dx_world);
   Vector3d dy_image = affine_transform_vector(m_WorldMatrixInverse, dy_world);
 
   // TODO figure our sampling code here
+  */
 
   return false;
 
 
+}
+
+bool
+Generic3DModel::GetSelectedMeshLayerValueAndRange(unsigned long &value, SelectedLayerDomain *domain)
+{
+  value = GetMeshLayers()->GetActiveLayerId();
+  auto layer = GetMeshLayers()->GetLayer(value);
+  if(!layer)
+    return false;
+
+  if(domain)
+  {
+    for(auto id : GetMeshLayers()->GetLayerIds())
+    {
+      layer = GetMeshLayers()->GetLayer(id);
+      (*domain)[id] = { layer->IsExternalLoadable(), layer->GetNickname() };
+    }
+  }
+
+  return true;
+}
+
+void
+Generic3DModel::SetSelectedMeshLayerValue(unsigned long value)
+{
+  GetMeshLayers()->SetActiveLayerId(value);
+}
+
+bool
+Generic3DModel::GetColorBarVisibleValue(bool &value)
+{
+  bool user_enabled = this->GetColorBarEnabledByUser();
+
+  bool external_mesh = false;
+  auto layer = GetMeshLayers()->GetLayer(GetMeshLayers()->GetActiveLayerId());
+  if(layer && layer->IsExternalLoadable())
+    external_mesh = true;
+
+  value = user_enabled && external_mesh;
+  return true;
 }
 
 
@@ -487,12 +549,10 @@ bool Generic3DModel::PickSegmentationVoxelUnderMouse(int px, int py)
   Vector3i hit;
   if(this->IntersectSegmentation(px, py, hit))
     {
-    Vector3ui cursor = to_unsigned_int(hit);
-
-    itk::ImageRegion<3> region = m_Driver->GetCurrentImageData()->GetImageRegion();
-    if(region.IsInside(to_itkIndex(cursor)))
+    itk::ImageRegion<3> region = m_Driver->GetCurrentImageData()->GetReferenceSpaceImageRegion();
+    if(region.IsInside(to_itkIndex(hit)))
       {
-      m_Driver->SetCursorPosition(cursor);
+      m_Driver->SetCursorPosition(hit);
       return true;
       }
     }
@@ -506,7 +566,7 @@ bool Generic3DModel::SpraySegmentationVoxelUnderMouse(int px, int py)
   Vector3i hit;
   if(this->IntersectSegmentation(px, py, hit))
     {
-    itk::ImageRegion<3> region = m_Driver->GetCurrentImageData()->GetImageRegion();
+    itk::ImageRegion<3> region = m_Driver->GetCurrentImageData()->GetReferenceSpaceImageRegion();
     if(region.IsInside(to_itkIndex(hit)))
       {
       m_SprayPoints->GetPoints()->InsertNextPoint(hit[0], hit[1], hit[2]);
@@ -537,3 +597,14 @@ void Generic3DModel::SetScalpelEndPoint(int px, int py, bool complete)
 }
 
 
+bool
+Generic3DModel::SelectedLayerDescriptor::operator==(const SelectedLayerDescriptor &other) const
+{
+  return (External == other.External) && (Name == other.Name);
+}
+
+bool
+Generic3DModel::SelectedLayerDescriptor::operator!=(const SelectedLayerDescriptor &other) const
+{
+  return !(*this == other);
+}

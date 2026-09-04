@@ -56,23 +56,16 @@ RegistrationModel::RegistrationModel()
         &Self::GetLogScalingValueAndRange,
         &Self::SetLogScalingValue);
 
-  m_RotationCenter = Vector3ui(0, 0, 0);
+  m_RotationCenter = Vector3i(0, 0, 0);
 
   // Set up the automatic registration parameters
 
   // Registration mode
   // TODO: add the other modes
-  TransformationDomain transform_domain;
-  transform_domain[RIGID] = "Rigid";
-  transform_domain[AFFINE] = "Affine";
-  m_TransformationModel = NewConcreteProperty(RIGID, transform_domain);
+  m_TransformationModel = NewSimpleConcreteProperty(RIGID);
 
   // Registration metric
-  SimilarityMetricDomain metric_domain;
-  metric_domain[NMI] = "Mutual information";
-  metric_domain[NCC] = "Cross-correlation";
-  metric_domain[SSD] = "Intensity difference";
-  m_SimilarityMetricModel = NewConcreteProperty(NMI, metric_domain);
+  m_SimilarityMetricModel = NewSimpleConcreteProperty(NMI);
 
   // Mask model
   m_UseSegmentationAsMaskModel = NewSimpleConcreteProperty(false);
@@ -121,7 +114,7 @@ void RegistrationModel::ResetOnMainImageChange()
     Vector3ui main_dim = main_img->GetSize();
 
     // Reset the center of rotation
-    Vector3ui center;
+    Vector3i center;
     for(int i = 0; i < 3; i++)
       center[i] = main_dim[i] / 2;
     this->SetRotationCenter(center);
@@ -597,7 +590,7 @@ void RegistrationModel::ApplyTranslation(const Vector3d &tran)
 
 
 
-void RegistrationModel::SetRotationCenter(const Vector3ui &pos)
+void RegistrationModel::SetRotationCenter(const Vector3i &pos)
 {
   m_RotationCenter = pos;
   this->UpdateManualParametersFromWrapper(false, true);
@@ -684,7 +677,7 @@ void RegistrationModel::RunAutoRegistration()
   if(moving_cast->GetSource()) moving_cast->GetSource()->Update();
 
   // Caster for the mask image - declared here so that SmartPtr does not go out of scope
-  ImageWrapperBase::FloatImageType *mask_cast;
+  ImageWrapperBase::FloatImageType *mask_cast = nullptr;
 
   // Set up the parameters for greedy registration
   GreedyParameters param;
@@ -1083,7 +1076,7 @@ void RegistrationModel::ResetTransformToIdentity()
   offset.Fill(0.0);
 
   // Reset the flips
-  this->m_ManualParam.Flip.fill(false);
+  this->m_ManualParam.Flip.fill(0);
   this->SetMovingTransform(matrix, offset);
 }
 
@@ -1257,7 +1250,7 @@ void RegistrationModel::SetScalingValue(Vector3d value)
   this->UpdateWrapperFromManualParameters();
 }
 
-bool RegistrationModel::GetFlipValue(Vector3b &value)
+bool RegistrationModel::GetFlipValue(Vector3i &value)
 {
   // Make sure that the manual parameters are valid
   if(m_ManualParam.LayerID == NOID)
@@ -1269,7 +1262,7 @@ bool RegistrationModel::GetFlipValue(Vector3b &value)
   return true;
 }
 
-void RegistrationModel::SetFlipValue(Vector3b value)
+void RegistrationModel::SetFlipValue(Vector3i value)
 {
   // Update the flips
   m_ManualParam.Flip = value;

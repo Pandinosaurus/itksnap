@@ -41,12 +41,11 @@ ImageIOWizardModel::ImageIOWizardModel()
                                    &Self::SetStickyOverlayColorMapValue);
 }
 
-
 void
-ImageIOWizardModel
-::InitializeForSave(GlobalUIModel *parent,
-                    AbstractSaveImageDelegate *delegate,
-                    const char *dispName, bool saveCrntTP)
+ImageIOWizardModel ::InitializeForSave(GlobalUIModel             *parent,
+                                       AbstractSaveImageDelegate *delegate,
+                                       ImageIODisplayName         dispName,
+                                       bool                       saveCrntTP)
 {
   m_Parent = parent;
   m_Mode = SAVE;
@@ -207,7 +206,7 @@ ImageIOWizardModel::GetBrowseDirectory(const std::string &file)
   return std::string("");
 }
 
-std::string ImageIOWizardModel::GetDisplayName() const
+ImageIODisplayName ImageIOWizardModel::GetDisplayName() const
 {
   return m_DisplayName;
 }
@@ -350,10 +349,9 @@ void ImageIOWizardModel::OpenImage(std::string filename, ImageReadingProgressAcc
     m_LoadDelegate->ValidateImage(m_GuidedIO, m_Warnings);
 
     // Update the application
-    m_LoadedImage =	
-        m_LoadDelegate->UpdateApplicationWithImage(m_GuidedIO);
+    m_LoadedImage = m_LoadDelegate->UpdateApplicationWithImage(m_GuidedIO);
 
-		miscProgSrc->AddProgress(0.9);
+    miscProgSrc->AddProgress(0.9);
 
     // Save the IO hints to the registry
     Registry regAssoc;

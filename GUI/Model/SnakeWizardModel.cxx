@@ -113,7 +113,7 @@ SnakeWizardModel::SnakeWizardModel()
   // Preprocessing mode model initialization
   m_PreprocessingModeModel = wrapGetterSetterPairAsProperty(
         this,
-        &Self::GetPreprocessingModeValueAndRange,
+        &Self::GetPreprocessingModeValue,
         &Self::SetPreprocessingModeValue);
 
   m_ActiveBubbleModel = wrapGetterSetterPairAsProperty(
@@ -1144,21 +1144,13 @@ void SnakeWizardModel::SetSnakeTypeValue(SnakeType value)
   m_Driver->SetSnakeMode(value);
 }
 
-bool SnakeWizardModel::GetPreprocessingModeValueAndRange(PreprocessingMode &value, SnakeWizardModel::PreprocessingModeDomain *range)
+bool SnakeWizardModel::GetPreprocessingModeValue(PreprocessingMode &value)
 {
   PreprocessingMode mode = m_Driver->GetPreprocessingMode();
   if(mode == PREPROCESS_NONE)
     return false;
 
   value = mode;
-
-  if(range)
-    {
-    (*range)[PREPROCESS_THRESHOLD] = "Thresholding";
-    (*range)[PREPROCESS_EDGE] = "Edge Attraction";
-    (*range)[PREPROCESS_GMM] = "Clustering";
-    (*range)[PREPROCESS_RF] = "Classification";
-    }
   return true;
 }
 
@@ -1266,7 +1258,7 @@ void SnakeWizardModel::RemoveBubbleAtCursor()
 
 bool SnakeWizardModel::UpdateBubble(int index, Bubble bubble)
 {
-  if(m_Driver->GetCurrentImageData()->GetImageRegion().IsInside(
+  if(m_Driver->GetCurrentImageData()->GetReferenceSpaceImageRegion().IsInside(
        to_itkIndex(bubble.center)))
     {
     m_Driver->GetBubbleArray()[index] = bubble;
@@ -1303,8 +1295,8 @@ void SnakeWizardModel::OnSnakeModeEnter()
 void SnakeWizardModel::ComputeBubbleRadiusDefaultAndRange()
 {
   // Set bubble radius range according to volume dimensions (world dimensions)
-  Vector3ui size = m_Driver->GetSNAPImageData()->GetVolumeExtents();
-  Vector3d voxdims = m_Driver->GetSNAPImageData()->GetImageSpacing();
+  Vector3ui size = m_Driver->GetSNAPImageData()->GetReferenceSpaceSize();
+  Vector3d voxdims = m_Driver->GetSNAPImageData()->GetReferenceSpaceSpacing();
   double mindim =
       vector_multiply_mixed<double,unsigned int,3>(voxdims, size).min_value();
 

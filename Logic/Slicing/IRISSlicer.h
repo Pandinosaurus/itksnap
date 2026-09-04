@@ -95,9 +95,9 @@ public:
   typedef itk::ImageRegionIteratorWithIndex<OutputImageType>  SimpleOutputIteratorType;
   typedef itk::ImageLinearIteratorWithIndex<OutputImageType> OutputIteratorType;
 
-  /** Set the current slice index */
-  itkSetMacro(SliceIndex,unsigned int);
-  itkGetMacro(SliceIndex,unsigned int);
+  /** Set the current slice index. Slice index may be outside of the image */
+  itkSetMacro(SliceIndex, int);
+  itkGetMacro(SliceIndex, int);
 
   /** Set the image axis along which the subsequent slices lie */
   itkSetMacro(SliceDirectionImageAxis,unsigned int);
@@ -141,7 +141,7 @@ public:
 protected:
   IRISSlicer();
   virtual ~IRISSlicer() {};
-  void PrintSelf(std::ostream &s, itk::Indent indent) const ITK_OVERRIDE;
+  void PrintSelf(std::ostream &s, itk::Indent indent) const override;
 
   /** 
    * IRISSlicer can produce an image which is a different
@@ -152,21 +152,21 @@ protected:
    * below.
    *
    * \sa ProcessObject::GenerateOutputInformaton()  */
-  virtual void GenerateOutputInformation() ITK_OVERRIDE;
+  virtual void GenerateOutputInformation() override;
 
-  void GenerateInputRequestedRegion() ITK_OVERRIDE;
+  void GenerateInputRequestedRegion() override;
 
   /**
    * This method maps an input region to an output region
    */
   virtual void CallCopyOutputRegionToInputRegion(InputImageRegionType &destRegion,
-                              const OutputImageRegionType &srcRegion) ITK_OVERRIDE;
+                              const OutputImageRegionType &srcRegion) override;
 
   /** 
    * IRISSlicer is not implemented as a multithreaded filter.
    * \sa ImageToImageFilter::GenerateData()  
    */
-  virtual void GenerateData() ITK_OVERRIDE;
+  virtual void GenerateData() override;
 
   template <class TSourceImage> void DoGenerateData(const TSourceImage *source);
 
@@ -175,7 +175,7 @@ private:
   void operator=(const Self&); //purposely not implemented
 
   // Current slice in each of the dimensions
-  unsigned int m_SliceIndex;
+  int m_SliceIndex;
 
   // Image axis corresponding to the slice direction
   unsigned int m_SliceDirectionImageAxis;
@@ -243,8 +243,8 @@ public:
   typedef itk::ImageLinearIteratorWithIndex<OutputImageType> OutputIteratorType;
 
   /** Set the current slice index */
-  itkSetMacro(SliceIndex, unsigned int);
-  itkGetMacro(SliceIndex, unsigned int);
+  itkSetMacro(SliceIndex, int);
+  itkGetMacro(SliceIndex, int);
 
   /** Set the image axis along which the subsequent slices lie */
   itkSetMacro(SliceDirectionImageAxis, unsigned int);
@@ -289,7 +289,7 @@ protected:
 
   IRISSlicer();
   virtual ~IRISSlicer() {};
-  void PrintSelf(std::ostream &s, itk::Indent indent) const ITK_OVERRIDE;
+  void PrintSelf(std::ostream &s, itk::Indent indent) const override;
 
   /**
     * IRISSlicer can produce an image which is a different
@@ -300,17 +300,17 @@ protected:
     * below.
     *
     * \sa ProcessObject::GenerateOutputInformaton()  */
-  virtual void GenerateOutputInformation() ITK_OVERRIDE;
+  virtual void GenerateOutputInformation() override;
 
-  void GenerateInputRequestedRegion() ITK_OVERRIDE;
+  void GenerateInputRequestedRegion() override;
 
   /**
     * This method maps an input region to an output region
     */
   virtual void CallCopyOutputRegionToInputRegion(InputImageRegionType &destRegion,
-                                                 const OutputImageRegionType &srcRegion) ITK_OVERRIDE;
+                                                 const OutputImageRegionType &srcRegion) override;
 
-  void GenerateData() ITK_OVERRIDE;
+  void GenerateData() override;
 
   /** Uncompresses a RLE line into a buffer pointed by out.
     * After each pixel is written, adds stride to the pointer.
@@ -342,7 +342,7 @@ private:
   void operator=(const Self&); //purposely not implemented
 
   // Current slice in each of the dimensions
-  unsigned int m_SliceIndex;
+  int m_SliceIndex;
 
   // Image axis corresponding to the slice direction
   unsigned int m_SliceDirectionImageAxis;

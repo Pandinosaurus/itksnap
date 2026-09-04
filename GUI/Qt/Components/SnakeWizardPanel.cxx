@@ -20,6 +20,7 @@
 #include <QTimer>
 #include <IRISApplication.h>
 #include <QToolBar>
+#include <SNAPQtCommonTranslations.h>
 
 Q_DECLARE_METATYPE(PreprocessingMode)
 
@@ -150,6 +151,11 @@ SnakeWizardPanel::SnakeWizardPanel(QWidget *parent) :
 {
   ui->setupUi(this);
 
+  // Set up translated combo box items
+  ui->inPreprocessMode->clear();
+  for (auto mode : { PREPROCESS_THRESHOLD, PREPROCESS_RF, PREPROCESS_GMM, PREPROCESS_EDGE })
+    ui->inPreprocessMode->addItem(SNAPQtCommonTranslations::translate(mode), QVariant(mode));
+
   m_SpeedDialog = new SpeedImageDialog(this);
   m_ParameterDialog = new SnakeParameterDialog(this);
 
@@ -184,7 +190,107 @@ SnakeWizardPanel::~SnakeWizardPanel()
 
 #include "QtToolbarCoupling.h"
 
-void SnakeWizardPanel::SetModel(GlobalUIModel *model)
+/*
+
+template <class TAtomic, unsigned int Size, class TWidget>
+class DefaultWidgetDomainTraits<SimpleEnumItemSetDomain<TAtomic, Size>, TWidget *>
+  : public WidgetDomainTraitsBase<SnakeWizardModel::PreprocessingModeDomain, TWidget *>
+{
+public:
+  using TDomain = SimpleEnumItemSetDomain<TAtomic, Size>;
+  virtual void    SetDomain(TWidget *w, const TDomain &domain) override
+  {
+    StringDomain str_dom;
+    for(auto &val : domain)
+    {
+      str_dom[val] = SNAPQtCommonTranslations::translate(val).toStdString();
+    }
+    m_StringTraits.SetDomain(w, str_dom);
+  }
+  virtual void    UpdateDomainDescription(TWidget *w, const TDomain &domain) override
+  {
+    StringDomain str_dom;
+    for(auto &val : domain)
+    {
+      str_dom[val] = SNAPQtCommonTranslations::translate(val).toStdString();
+    }
+    m_StringTraits.UpdateDomainDescription(w, str_dom);
+
+  }
+  virtual TDomain GetDomain(TWidget *w) override
+  {
+    StringDomain str_dom = m_StringTraits.GetDomain(w);
+    TDomain domain;
+    for(auto &val : str_dom)
+    {
+      domain[val] = val;
+    }
+    return domain;
+  }
+
+private:
+  using StringDomain = SimpleItemSetDomain<PreprocessingMode, std::string>;
+  using StringTraits = DefaultWidgetDomainTraits<StringDomain, TWidget>;
+  StringTraits m_StringTraits;
+};
+
+enum class TestEnum
+{
+  RED, GREEN, BLUE
+};
+
+template <class TEnum, unsigned int Size> class EnumArray
+{
+public:
+
+}
+
+
+template <class TWidget>
+class TestTraits : public WidgetDomainTraitsBase<SnakeWizardModel::PreprocessingModeDomain, TWidget *>
+{
+public:
+  using TDomain = SnakeWizardModel::PreprocessingModeDomain;
+  virtual void    SetDomain(TWidget *w, const TDomain &domain) override
+  {
+    StringDomain str_dom;
+    for(auto &val : domain)
+    {
+      str_dom[val.first] = SNAPQtCommonTranslations::translate(val.first).toStdString();
+    }
+    m_StringTraits.SetDomain(w, str_dom);
+  }
+  virtual void    UpdateDomainDescription(TWidget *w, const TDomain &domain) override
+  {
+    StringDomain str_dom;
+    for(auto &val : domain)
+    {
+      str_dom[val.first] = SNAPQtCommonTranslations::translate(val.first).toStdString();
+    }
+    m_StringTraits.UpdateDomainDescription(w, str_dom);
+
+  }
+  virtual TDomain GetDomain(TWidget *w) override
+  {
+    StringDomain str_dom = m_StringTraits.GetDomain(w);
+    TDomain domain;
+    for(auto &val : str_dom)
+    {
+      domain[val.first] = val.first;
+    }
+    return domain;
+  }
+
+private:
+  using StringDomain = SimpleItemSetDomain<PreprocessingMode, std::string>;
+  using StringTraits = DefaultWidgetDomainTraits<StringDomain, TWidget>;
+  StringTraits m_StringTraits;
+};
+
+*/
+
+void
+SnakeWizardPanel::SetModel(GlobalUIModel *model)
 {
   // Store and pass on the models
   m_ParentModel = model;
@@ -194,7 +300,6 @@ void SnakeWizardPanel::SetModel(GlobalUIModel *model)
 
   // Couple widgets to models
   makeCoupling(ui->inBubbleRadius, m_Model->GetBubbleRadiusModel());
-
 
   // Couple the preprocessing mode combo box
   makeCoupling(ui->inPreprocessMode, m_Model->GetPreprocessingModeModel());
@@ -319,7 +424,7 @@ void SnakeWizardPanel::on_btnBubbleNext_clicked()
   }
   catch(IRISException &exc)
   {
-    QMessageBox::warning(this, "ITK-SNAP", exc.what(), QMessageBox::Ok);
+    QMessageBox::warning(this, tr("ITK-SNAP"), exc.what(), QMessageBox::Ok);
   }
 }
 
@@ -455,7 +560,7 @@ void SnakeWizardPanel::on_btnClassifyTrain_clicked()
   }
   catch (IRISException &exc)
   {
-    ReportNonLethalException(this, exc, "Classification Failed");
+    ReportNonLethalException(this, exc, tr("Classification Failed"));
   }
 }
 

@@ -18,7 +18,10 @@
 font-size:11px;
 }</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,0">
+   <property name="spacing">
+    <number>2</number>
+   </property>
    <property name="leftMargin">
     <number>0</number>
    </property>
@@ -31,12 +34,9 @@ font-size:11px;
    <property name="bottomMargin">
     <number>0</number>
    </property>
-   <property name="spacing">
-    <number>2</number>
-   </property>
-   <item row="1" column="1" alignment="Qt::AlignHCenter">
-    <widget class="QWidget" name="sidebar" native="true">
-     <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <widget class="QWidget" name="widget" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="1,0">
       <property name="spacing">
        <number>2</number>
       </property>
@@ -53,102 +53,126 @@ font-size:11px;
        <number>0</number>
       </property>
       <item>
-       <widget class="QToolButton" name="btnExpand">
-        <property name="maximumSize">
-         <size>
-          <width>20</width>
-          <height>20</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>...</string>
-        </property>
-        <property name="icon">
-         <iconset>
-          <normalon>:/root/dl_axial.png</normalon>
-         </iconset>
-        </property>
-        <property name="autoRaise">
-         <bool>true</bool>
-        </property>
-       </widget>
+       <widget class="QWidget" name="sliceViewNew" native="true"/>
       </item>
       <item>
-       <widget class="QToolButton" name="btnToggleLayout">
-        <property name="maximumSize">
-         <size>
-          <width>20</width>
-          <height>20</height>
-         </size>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Toggle between thumbnail and tiled layouts.&lt;/p&gt;&lt;p&gt;In &lt;span style=&quot; font-weight:600;&quot;&gt;thumbnail&lt;/span&gt; layout, one image layer occupies most of the available screen space, and other loaded image layers are shown as thumbnails. In &lt;span style=&quot; font-weight:600;&quot;&gt;tiled&lt;/span&gt; layout, multiple image layers are shown side by side. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>...</string>
-        </property>
-        <property name="icon">
-         <iconset resource="../Resources/SNAPResources.qrc">
-          <normaloff>:/root/layout_thumb_16.png</normaloff>
-          <normalon>:/root/layout_tile_16.png</normalon>:/root/layout_thumb_16.png</iconset>
-        </property>
-        <property name="checkable">
-         <bool>false</bool>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-        <property name="autoRaise">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QToolButton" name="btnScreenshot">
-        <property name="maximumSize">
-         <size>
-          <width>20</width>
-          <height>20</height>
-         </size>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;Take a screenshot of the current slice view.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>...</string>
-        </property>
-        <property name="icon">
-         <iconset resource="../Resources/SNAPResources.qrc">
-          <normaloff>:/root/icons8-camera-12.png</normaloff>:/root/icons8-camera-12.png</iconset>
-        </property>
-        <property name="iconSize">
-         <size>
-          <width>12</width>
-          <height>12</height>
-         </size>
-        </property>
-        <property name="autoRaise">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item alignment="Qt::AlignHCenter">
-       <widget class="QScrollBar" name="inSlicePosition">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="toolTip">
-         <string>Slice selection</string>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
+       <widget class="QWidget" name="sidebar" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QToolButton" name="btnExpand">
+           <property name="maximumSize">
+            <size>
+             <width>20</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normalon>:/root/dl_axial.png</normalon>
+            </iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnToggleLayout">
+           <property name="maximumSize">
+            <size>
+             <width>20</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Toggle between thumbnail and tiled layouts.&lt;/p&gt;&lt;p&gt;In &lt;span style=&quot; font-weight:600;&quot;&gt;thumbnail&lt;/span&gt; layout, one image layer occupies most of the available screen space, and other loaded image layers are shown as thumbnails. In &lt;span style=&quot; font-weight:600;&quot;&gt;tiled&lt;/span&gt; layout, multiple image layers are shown side by side. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../Resources/SNAPResources.qrc">
+             <normaloff>:/root/layout_thumb_16.png</normaloff>
+             <normalon>:/root/layout_tile_16.png</normalon>:/root/layout_thumb_16.png</iconset>
+           </property>
+           <property name="checkable">
+            <bool>false</bool>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnScreenshot">
+           <property name="maximumSize">
+            <size>
+             <width>20</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:11pt;&quot;&gt;Take a screenshot of the current slice view.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../Resources/SNAPResources.qrc">
+             <normaloff>:/root/icons8-camera-12.png</normaloff>:/root/icons8-camera-12.png</iconset>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>12</width>
+             <height>12</height>
+            </size>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignmentFlag::AlignHCenter">
+          <widget class="QScrollBar" name="inSlicePosition">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="toolTip">
+            <string>Slice selection</string>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Orientation::Vertical</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>
     </widget>
    </item>
-   <item row="2" column="0" colspan="2">
+   <item>
     <widget class="QWidget" name="mainToolbar" native="true">
      <layout class="QHBoxLayout" name="horizontalLayout_6">
       <property name="spacing">
@@ -196,7 +220,7 @@ font-size:11px;
             <item>
              <spacer name="horizontalSpacer">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -220,7 +244,7 @@ font-size:11px;
                </font>
               </property>
               <property name="toolTip">
-               <string/>
+               <string>Adjust zoom so that the image fits this view panel</string>
               </property>
               <property name="text">
                <string>zoom to fit</string>
@@ -245,7 +269,7 @@ font-size:11px;
             <item>
              <spacer name="horizontalSpacer_2">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -275,13 +299,13 @@ font-size:11px;
                </font>
               </property>
               <property name="toolTip">
-               <string/>
+               <string>Complete polygon drawing by connecting last and first points</string>
               </property>
               <property name="text">
                <string>complete</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -305,17 +329,13 @@ font-size:11px;
                </font>
               </property>
               <property name="toolTip">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Helvetica'; font-size:11px; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Deletes the last point added to the polygon&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Delete the last point added to the polygon</string>
               </property>
               <property name="text">
                <string>undo last point</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -333,17 +353,13 @@ p, li { white-space: pre-wrap; }
                </font>
               </property>
               <property name="toolTip">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Helvetica'; font-size:11px; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Clears the current polygon so you can start drawing from scratch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Clears the current polygon so you can start drawing from scratch</string>
               </property>
               <property name="text">
                <string>clear</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -365,7 +381,7 @@ p, li { white-space: pre-wrap; }
             <item>
              <spacer name="horizontalSpacer_3">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -395,13 +411,13 @@ p, li { white-space: pre-wrap; }
                </font>
               </property>
               <property name="toolTip">
-               <string/>
+               <string>Fill the polygon and add to the segmentation</string>
               </property>
               <property name="text">
                <string>accept</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -425,17 +441,13 @@ p, li { white-space: pre-wrap; }
                </font>
               </property>
               <property name="toolTip">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Helvetica'; font-size:11px; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Deletes the selected vertices in the polygon&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Delete the selected vertices in the polygon</string>
               </property>
               <property name="text">
                <string>delete</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -459,17 +471,13 @@ p, li { white-space: pre-wrap; }
                </font>
               </property>
               <property name="toolTip">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Helvetica'; font-size:11px; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Splits each selected edge in the polygon by inserting a new vertex in the middle&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Splits each selected edge in the polygon by inserting a new vertex in the middle</string>
               </property>
               <property name="text">
                <string>split</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -487,17 +495,13 @@ p, li { white-space: pre-wrap; }
                </font>
               </property>
               <property name="toolTip">
-               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Helvetica'; font-size:11px; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Deletes the entire polygon, so you can draw a new one from scratch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>Deletes the entire polygon, so you can draw a new one from scratch</string>
               </property>
               <property name="text">
                <string>clear</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -519,7 +523,7 @@ p, li { white-space: pre-wrap; }
             <item>
              <spacer name="horizontalSpacer_5">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -555,7 +559,7 @@ p, li { white-space: pre-wrap; }
                <string>accept</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -576,7 +580,7 @@ p, li { white-space: pre-wrap; }
                <string>clear</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -598,7 +602,7 @@ p, li { white-space: pre-wrap; }
             <item>
              <spacer name="horizontalSpacer_6">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -621,11 +625,14 @@ p, li { white-space: pre-wrap; }
                 <pointsize>-1</pointsize>
                </font>
               </property>
+              <property name="toolTip">
+               <string>Find previous annotation</string>
+              </property>
               <property name="text">
-               <string>previous</string>
+               <string>«</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -642,21 +649,24 @@ p, li { white-space: pre-wrap; }
                 <pointsize>-1</pointsize>
                </font>
               </property>
+              <property name="toolTip">
+               <string>Find next annotation</string>
+              </property>
               <property name="text">
-               <string>next</string>
+               <string>»</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
             <item>
              <spacer name="horizontalSpacer_7">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -679,21 +689,24 @@ p, li { white-space: pre-wrap; }
                 <pointsize>-1</pointsize>
                </font>
               </property>
+              <property name="toolTip">
+               <string>Select all annotations</string>
+              </property>
               <property name="text">
                <string>select all</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
             <item>
              <spacer name="horizontalSpacer_8">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -716,21 +729,24 @@ p, li { white-space: pre-wrap; }
                 <pointsize>-1</pointsize>
                </font>
               </property>
+              <property name="toolTip">
+               <string>Edit selected annotation</string>
+              </property>
               <property name="text">
                <string>edit...</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
             <item>
              <spacer name="horizontalSpacer_9">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeType">
-               <enum>QSizePolicy::Fixed</enum>
+               <enum>QSizePolicy::Policy::Fixed</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -754,13 +770,13 @@ p, li { white-space: pre-wrap; }
                </font>
               </property>
               <property name="toolTip">
-               <string/>
+               <string>Delete selected annotation</string>
               </property>
               <property name="text">
                <string>delete</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -782,7 +798,7 @@ p, li { white-space: pre-wrap; }
             <item>
              <spacer name="horizontalSpacer_4">
               <property name="orientation">
-               <enum>Qt::Horizontal</enum>
+               <enum>Qt::Orientation::Horizontal</enum>
               </property>
               <property name="sizeHint" stdset="0">
                <size>
@@ -812,7 +828,7 @@ p, li { white-space: pre-wrap; }
                <string>paste</string>
               </property>
               <property name="toolButtonStyle">
-               <enum>Qt::ToolButtonTextOnly</enum>
+               <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
               </property>
              </widget>
             </item>
@@ -842,27 +858,11 @@ p, li { white-space: pre-wrap; }
          <string>TextLabel</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
         </property>
        </widget>
       </item>
      </layout>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="GenericSliceView" name="sliceView" native="true">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-       <horstretch>1</horstretch>
-       <verstretch>1</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>40</width>
-       <height>40</height>
-      </size>
-     </property>
     </widget>
    </item>
   </layout>
@@ -1037,7 +1037,7 @@ p, li { white-space: pre-wrap; }
     <string>Ctrl+Up</string>
    </property>
    <property name="shortcutContext">
-    <enum>Qt::WidgetWithChildrenShortcut</enum>
+    <enum>Qt::ShortcutContext::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
   <action name="actionZoom_Out">
@@ -1055,7 +1055,7 @@ p, li { white-space: pre-wrap; }
     <string>Ctrl+Down</string>
    </property>
    <property name="shortcutContext">
-    <enum>Qt::WidgetWithChildrenShortcut</enum>
+    <enum>Qt::ShortcutContext::WidgetWithChildrenShortcut</enum>
    </property>
   </action>
   <action name="actionAnnotationAcceptLine">
@@ -1176,14 +1176,6 @@ p, li { white-space: pre-wrap; }
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>GenericSliceView</class>
-   <extends>QWidget</extends>
-   <header>GenericSliceView.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../Resources/SNAPResources.qrc"/>
  </resources>

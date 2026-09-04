@@ -7,17 +7,28 @@
     <x>0</x>
     <y>0</y>
     <width>698</width>
-    <height>608</height>
+    <height>588</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Preferences - ITK-SNAP</string>
   </property>
   <layout class="QGridLayout" name="gridLayout" columnstretch="0,0">
+   <item row="0" column="1">
+    <widget class="QLabel" name="outPage">
+     <property name="styleSheet">
+      <string notr="true">font-size:14px;
+font-weight:bold;</string>
+     </property>
+     <property name="text">
+      <string>General</string>
+     </property>
+    </widget>
+   </item>
    <item row="1" column="1">
     <widget class="QStackedWidget" name="stack">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="pageGeneral">
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -34,11 +45,11 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_4">
+        <widget class="QTabWidget" name="tabWidgetGeneral">
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="tab_6">
+         <widget class="QWidget" name="tabGeneralDefault">
           <attribute name="title">
            <string>Default Behavior</string>
           </attribute>
@@ -95,7 +106,7 @@
               <item>
                <spacer name="horizontalSpacer">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -132,7 +143,7 @@
            <item>
             <spacer name="verticalSpacer_8">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -144,7 +155,7 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab_7">
+         <widget class="QWidget" name="tabGeneralPermissions">
           <attribute name="title">
            <string>Permissions</string>
           </attribute>
@@ -159,7 +170,7 @@
            <item>
             <spacer name="verticalSpacer">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -190,11 +201,11 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget">
+        <widget class="QTabWidget" name="tabWidgetSliceViews">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
-         <widget class="QWidget" name="tab_3">
+         <widget class="QWidget" name="tabSliceViewsDisplay">
           <attribute name="title">
            <string>Display</string>
           </attribute>
@@ -209,10 +220,10 @@
              </property>
              <layout class="QFormLayout" name="formLayout_2">
               <property name="fieldGrowthPolicy">
-               <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+               <enum>QFormLayout::FieldGrowthPolicy::FieldsStayAtSizeHint</enum>
               </property>
               <property name="formAlignment">
-               <set>Qt::AlignHCenter|Qt::AlignTop</set>
+               <set>Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop</set>
               </property>
               <property name="rightMargin">
                <number>24</number>
@@ -327,7 +338,7 @@
            <item>
             <spacer name="verticalSpacer_4">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -339,7 +350,7 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab">
+         <widget class="QWidget" name="tabSliceViewsLayout">
           <attribute name="title">
            <string>Layout</string>
           </attribute>
@@ -408,7 +419,7 @@ color:white;</string>
                     <bool>true</bool>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
@@ -446,7 +457,7 @@ color:white;</string>
                     <bool>true</bool>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
@@ -478,7 +489,7 @@ color:white;</string>
                     <string>3D View</string>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
@@ -516,7 +527,7 @@ color:white;</string>
                     <bool>true</bool>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
@@ -529,7 +540,7 @@ color:white;</string>
               <item>
                <spacer name="verticalSpacer_2">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -638,7 +649,7 @@ color:white;</string>
                  <string>On the Axial and Coronal views</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_7">
-                 <item row="0" column="1" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+                 <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignBottom">
                   <widget class="QRadioButton" name="radio_axial_rl">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -661,7 +672,7 @@ color:white;</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1" alignment="Qt::AlignHCenter|Qt::AlignTop">
+                 <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop">
                   <widget class="QLabel" name="lbl_axial_b_1">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -685,7 +696,6 @@ color:white;</string>
                     <font>
                      <family>Arial</family>
                      <pointsize>11</pointsize>
-                     <weight>50</weight>
                      <italic>false</italic>
                      <bold>false</bold>
                      <kerning>true</kerning>
@@ -698,17 +708,17 @@ color:white;</string>
                     <string>Display patient's left on the right</string>
                    </property>
                    <property name="textFormat">
-                    <enum>Qt::PlainText</enum>
+                    <enum>Qt::TextFormat::PlainText</enum>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+                 <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignBottom">
                   <widget class="QRadioButton" name="radio_axial_lr">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -736,7 +746,7 @@ color:white;</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0" alignment="Qt::AlignHCenter|Qt::AlignTop">
+                 <item row="1" column="0" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop">
                   <widget class="QLabel" name="lbl_axial_a_1">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -760,7 +770,6 @@ color:white;</string>
                     <font>
                      <family>Arial</family>
                      <pointsize>11</pointsize>
-                     <weight>50</weight>
                      <italic>false</italic>
                      <bold>false</bold>
                     </font>
@@ -772,10 +781,10 @@ color:white;</string>
                     <string>Display patient's left on the left</string>
                    </property>
                    <property name="textFormat">
-                    <enum>Qt::PlainText</enum>
+                    <enum>Qt::TextFormat::PlainText</enum>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
@@ -815,7 +824,7 @@ color:white;</string>
                  <string>On the Sagittal view</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_6">
-                 <item row="1" column="1" alignment="Qt::AlignHCenter|Qt::AlignTop">
+                 <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop">
                   <widget class="QLabel" name="lbl_sagittal_b_1">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -839,7 +848,6 @@ color:white;</string>
                     <font>
                      <family>Arial</family>
                      <pointsize>11</pointsize>
-                     <weight>50</weight>
                      <italic>false</italic>
                      <bold>false</bold>
                     </font>
@@ -851,17 +859,17 @@ color:white;</string>
                     <string>Display patient's anterior on the right</string>
                    </property>
                    <property name="textFormat">
-                    <enum>Qt::PlainText</enum>
+                    <enum>Qt::TextFormat::PlainText</enum>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+                 <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignBottom">
                   <widget class="QRadioButton" name="radio_sagittal_ap">
                    <property name="text">
                     <string/>
@@ -878,7 +886,7 @@ color:white;</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0" alignment="Qt::AlignHCenter|Qt::AlignTop">
+                 <item row="1" column="0" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop">
                   <widget class="QLabel" name="lbl_sagittal_a_1">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -902,7 +910,6 @@ color:white;</string>
                     <font>
                      <family>Arial</family>
                      <pointsize>11</pointsize>
-                     <weight>50</weight>
                      <italic>false</italic>
                      <bold>false</bold>
                     </font>
@@ -914,20 +921,20 @@ color:white;</string>
                     <string>Display patient's anterior on the left</string>
                    </property>
                    <property name="textFormat">
-                    <enum>Qt::PlainText</enum>
+                    <enum>Qt::TextFormat::PlainText</enum>
                    </property>
                    <property name="scaledContents">
                     <bool>false</bool>
                    </property>
                    <property name="alignment">
-                    <set>Qt::AlignCenter</set>
+                    <set>Qt::AlignmentFlag::AlignCenter</set>
                    </property>
                    <property name="wordWrap">
                     <bool>true</bool>
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="1" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+                 <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignBottom">
                   <widget class="QRadioButton" name="radio_sagittal_pa">
                    <property name="text">
                     <string/>
@@ -981,7 +988,7 @@ color:white;</string>
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="page">
+     <widget class="QWidget" name="pageAppearance">
       <layout class="QHBoxLayout" name="horizontalLayout_5">
        <property name="leftMargin">
         <number>0</number>
@@ -996,11 +1003,11 @@ color:white;</string>
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_2">
+        <widget class="QTabWidget" name="tabWidgetAppearance">
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="tab_2">
+         <widget class="QWidget" name="tabAppearanceMain">
           <attribute name="title">
            <string>Appearance</string>
           </attribute>
@@ -1034,7 +1041,7 @@ color:white;</string>
                <widget class="QWidget" name="widget_7" native="true">
                 <layout class="QFormLayout" name="formLayout_3">
                  <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+                  <enum>QFormLayout::FieldGrowthPolicy::FieldsStayAtSizeHint</enum>
                  </property>
                  <property name="verticalSpacing">
                   <number>5</number>
@@ -1061,10 +1068,10 @@ color:white;</string>
                  <item row="1" column="1">
                   <spacer name="verticalSpacer_7">
                    <property name="orientation">
-                    <enum>Qt::Vertical</enum>
+                    <enum>Qt::Orientation::Vertical</enum>
                    </property>
                    <property name="sizeType">
-                    <enum>QSizePolicy::Fixed</enum>
+                    <enum>QSizePolicy::Policy::Fixed</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
@@ -1110,10 +1117,10 @@ color:white;</string>
                  <item row="4" column="1">
                   <spacer name="verticalSpacer_12">
                    <property name="orientation">
-                    <enum>Qt::Vertical</enum>
+                    <enum>Qt::Orientation::Vertical</enum>
                    </property>
                    <property name="sizeType">
-                    <enum>QSizePolicy::Fixed</enum>
+                    <enum>QSizePolicy::Policy::Fixed</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
@@ -1156,10 +1163,10 @@ color:white;</string>
                  <item row="11" column="1">
                   <spacer name="verticalSpacer_6">
                    <property name="orientation">
-                    <enum>Qt::Vertical</enum>
+                    <enum>Qt::Orientation::Vertical</enum>
                    </property>
                    <property name="sizeType">
-                    <enum>QSizePolicy::Fixed</enum>
+                    <enum>QSizePolicy::Policy::Fixed</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
@@ -1242,11 +1249,11 @@ color:white;</string>
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_3">
+        <widget class="QTabWidget" name="tabWidgetRendering">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
-         <widget class="QWidget" name="tab_4">
+         <widget class="QWidget" name="tabRenderingSmoothing">
           <attribute name="title">
            <string>Smoothing</string>
           </attribute>
@@ -1334,10 +1341,10 @@ color:white;</string>
            <item>
             <spacer name="verticalSpacer_13">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeType">
-              <enum>QSizePolicy::Fixed</enum>
+              <enum>QSizePolicy::Policy::Fixed</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1461,7 +1468,7 @@ color:white;</string>
                  <item>
                   <spacer name="horizontalSpacer_2">
                    <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
+                    <enum>Qt::Orientation::Horizontal</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
@@ -1499,7 +1506,7 @@ color:white;</string>
            <item>
             <spacer name="verticalSpacer_9">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1511,7 +1518,7 @@ color:white;</string>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab_5">
+         <widget class="QWidget" name="tabRenderingDecimation">
           <attribute name="title">
            <string>Decimation</string>
           </attribute>
@@ -1548,7 +1555,7 @@ color:white;</string>
                <widget class="QWidget" name="widget_11" native="true">
                 <layout class="QFormLayout" name="formLayout_8">
                  <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+                  <enum>QFormLayout::FieldGrowthPolicy::FieldsStayAtSizeHint</enum>
                  </property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_20">
@@ -1591,7 +1598,7 @@ color:white;</string>
                <widget class="QWidget" name="widget_12" native="true">
                 <layout class="QFormLayout" name="formLayout_9">
                  <property name="fieldGrowthPolicy">
-                  <enum>QFormLayout::FieldsStayAtSizeHint</enum>
+                  <enum>QFormLayout::FieldGrowthPolicy::FieldsStayAtSizeHint</enum>
                  </property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_25">
@@ -1619,7 +1626,7 @@ color:white;</string>
                  <item>
                   <spacer name="horizontalSpacer_3">
                    <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
+                    <enum>Qt::Orientation::Horizontal</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
@@ -1645,7 +1652,7 @@ color:white;</string>
            <item>
             <spacer name="verticalSpacer_14">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1676,11 +1683,11 @@ color:white;</string>
         <number>0</number>
        </property>
        <item>
-        <widget class="QTabWidget" name="tabWidget_5">
+        <widget class="QTabWidget" name="tabWidgetTools">
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="tabPaintbrush">
+         <widget class="QWidget" name="tabToolsPaintbrush">
           <attribute name="title">
            <string>Paintbrush</string>
           </attribute>
@@ -1694,7 +1701,7 @@ color:white;</string>
               <item>
                <spacer name="horizontalSpacer_4">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -1717,10 +1724,10 @@ color:white;</string>
               <item>
                <spacer name="horizontalSpacer_5">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
+                 <enum>QSizePolicy::Policy::Fixed</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -1746,7 +1753,7 @@ color:white;</string>
            <item>
             <spacer name="verticalSpacer_11">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -1762,6 +1769,7 @@ color:white;</string>
        </item>
       </layout>
      </widget>
+     <widget class="DeepLearningServerPanel" name="pageDL"/>
     </widget>
    </item>
    <item row="0" column="0" rowspan="2">
@@ -1806,26 +1814,20 @@ color:white;</string>
        <string>Tools</string>
       </property>
      </item>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QLabel" name="outPage">
-     <property name="styleSheet">
-      <string notr="true">font-size:14px;
-font-weight:bold;</string>
-     </property>
-     <property name="text">
-      <string>General</string>
-     </property>
+     <item>
+      <property name="text">
+       <string>AI Extensions</string>
+      </property>
+     </item>
     </widget>
    </item>
    <item row="2" column="0" colspan="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+      <set>QDialogButtonBox::StandardButton::Apply|QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
      </property>
     </widget>
    </item>
@@ -1838,10 +1840,16 @@ font-weight:bold;</string>
    <header location="global">QColorButtonWidget.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>DeepLearningServerPanel</class>
+   <extends>QWidget</extends>
+   <header>DeepLearningServerPanel.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>listWidget</tabstop>
-  <tabstop>tabWidget_4</tabstop>
+  <tabstop>tabWidgetGeneral</tabstop>
   <tabstop>chkLinkedZoom</tabstop>
   <tabstop>chkContinuousUpdate</tabstop>
   <tabstop>chkSynchronize</tabstop>
@@ -1849,7 +1857,7 @@ font-weight:bold;</string>
   <tabstop>chkSyncZoom</tabstop>
   <tabstop>chkSyncPan</tabstop>
   <tabstop>chkCheckForUpdates</tabstop>
-  <tabstop>tabWidget</tabstop>
+  <tabstop>tabWidgetSliceViews</tabstop>
   <tabstop>btnASC</tabstop>
   <tabstop>btnSAC</tabstop>
   <tabstop>btnCAS</tabstop>
@@ -1860,13 +1868,13 @@ font-weight:bold;</string>
   <tabstop>inThumbnailFraction</tabstop>
   <tabstop>inThumbnailMaxSize</tabstop>
   <tabstop>inInterpolationMode</tabstop>
-  <tabstop>tabWidget_2</tabstop>
+  <tabstop>tabWidgetAppearance</tabstop>
   <tabstop>treeVisualElements</tabstop>
   <tabstop>chkElementVisible</tabstop>
   <tabstop>btnElementColor</tabstop>
   <tabstop>inElementThickness</tabstop>
   <tabstop>inElementFontSize</tabstop>
-  <tabstop>tabWidget_3</tabstop>
+  <tabstop>tabWidgetRendering</tabstop>
   <tabstop>chkGaussianSmooth</tabstop>
   <tabstop>inGaussianSmoothDeviation</tabstop>
   <tabstop>inGaussianSmoothMaxError</tabstop>

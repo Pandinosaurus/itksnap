@@ -4,8 +4,6 @@
 # This CMake file is modeled after QtTest example project from
 # http://www.cmake.org/Wiki/BundleUtilitiesExample
 
-PROJECT(SNAP)
-
 #--------------------------------------------------------------------------------
 # CMAKE PRELIMINARIES                       
 #--------------------------------------------------------------------------------
@@ -15,8 +13,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 cmake_policy(SET CMP0026 NEW)
 cmake_policy(SET CMP0077 NEW)
-cmake_policy(SET CMP0080 OLD)
 
+#--------------------------------------------------------------------------------
+# PROJECT DEFINITION
+#--------------------------------------------------------------------------------
+PROJECT(SNAP)
 SET(CMAKE_MODULE_PATH ${SNAP_SOURCE_DIR}/CMake)
 
 OPTION(BUILD_SHARED_LIBS "Build shared (dynamic) libraries" OFF)
@@ -24,12 +25,11 @@ MARK_AS_ADVANCED(BUILD_SHARED_LIBS)
 
 #--------------------------------------------------------------------------------
 # MACROS
-#--------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------C
 # Get today's date (see http://cmake.3232098.n2.nabble.com/How-to-get-the-current-date-td5776870.html)
 MACRO (TODAY RESULT)
     IF (WIN32)
-        EXECUTE_PROCESS(COMMAND "cmd" " /C date /T" OUTPUT_VARIABLE ${RESULT})
-        string(REGEX REPLACE "(..)/(..)/(....).*" "\\1/\\2/\\3" ${RESULT} ${${RESULT}})
+        EXECUTE_PROCESS(COMMAND powershell -Command "Get-Date -Format 'MM/dd/yyyy'" OUTPUT_VARIABLE ${RESULT})
     ELSEIF(UNIX)
         EXECUTE_PROCESS(COMMAND "date" "+%b %d, %Y" OUTPUT_VARIABLE ${RESULT})
         string(REGEX REPLACE "(...) (..), (....).*" "\\1 \\2, \\3" ${RESULT} ${${RESULT}})
@@ -37,8 +37,8 @@ MACRO (TODAY RESULT)
         MESSAGE(SEND_ERROR "date not implemented")
         SET(${RESULT} 000000)
     ENDIF (WIN32)
-	string(REPLACE "\n" "" ${RESULT} ${${RESULT}})
-	string(REPLACE " " "" ${RESULT} ${${RESULT}})
+    string(REPLACE "\n" "" ${RESULT} ${${RESULT}})
+    string(REPLACE " " "" ${RESULT} ${${RESULT}})
 ENDMACRO (TODAY)
 
 # This macro is used to install binary targets.
@@ -92,13 +92,13 @@ ENDIF()
 
 # These four fields should be modified when versions change
 SET(SNAP_VERSION_MAJOR 4)
-SET(SNAP_VERSION_MINOR 2)
+SET(SNAP_VERSION_MINOR 6)
 SET(SNAP_VERSION_PATCH 0)
-SET(SNAP_VERSION_QUALIFIER "")
+SET(SNAP_VERSION_QUALIFIER "-alpha.3")
 
 # These fields should also be modified each time
-SET(SNAP_VERSION_RELEASE_DATE "20240422")
-SET(SNAP_VERSION_RELEASE_DATE_FORMATTED "April 22, 2024")
+SET(SNAP_VERSION_RELEASE_DATE "20260901")
+SET(SNAP_VERSION_RELEASE_DATE_FORMATTED "Sep 01, 2026")
 
 # This field should only change when the format of the settings files changes
 # in a non backwards-compatible way
@@ -144,10 +144,10 @@ endif()
 
 IF(DEFINED InsightApplications_SOURCE_DIR)
   SET(BUILD_OUTSIDE_INSIGHT_APPLICATIONS FALSE CACHE BOOL 
-	"Is SNAP being built separate from InsightApplications?")
+    "Is SNAP being built separate from InsightApplications?")
 ELSE(DEFINED InsightApplications_SOURCE_DIR)
   SET(BUILD_OUTSIDE_INSIGHT_APPLICATIONS TRUE CACHE BOOL 
-	"Is SNAP being built separate from InsightApplications?")
+    "Is SNAP being built separate from InsightApplications?")
 ENDIF(DEFINED InsightApplications_SOURCE_DIR)			
 
 IF( BUILD_OUTSIDE_INSIGHT_APPLICATIONS )
@@ -221,6 +221,8 @@ CONFIGURE_FILE(
 SET(LOGIC_CXX
   ${SNAP_BINARY_DIR}/SNAPCommon.cxx
   Common/AbstractModel.cxx
+  Common/StdoutProgressDelegate.cxx
+  Common/StdoutSSHAuthDelegate.cxx
   Common/AbstractPropertyContainerModel.cxx
   Common/AffineTransformHelper.cxx
   Common/ColorLabelPropertyModel.cxx
@@ -230,7 +232,6 @@ SET(LOGIC_CXX
   Common/HistoryManager.cxx
   Common/IPCHandler.cxx
   Common/IRISException.cxx
-  Common/IRISVectorTemplates.cxx
   Common/MultiFrameDicomSeriesSorter.cxx
   Common/Rebroadcaster.cxx
   Common/Registry.cxx
@@ -267,7 +268,13 @@ SET(LOGIC_CXX
   Logic/ImageWrapper/ImageWrapperBase.cxx
   Logic/ImageWrapper/ImageWrapper.cxx
   Logic/ImageWrapper/LabelImageWrapper.cxx
+  Logic/ImageWrapper/FlywheelRemoteImageSource.cxx
   Logic/ImageWrapper/GuidedNativeImageIO.cxx
+  Logic/ImageWrapper/ImageIORemote.cxx
+  Logic/ImageWrapper/RemoteFileCache.cxx
+  Logic/ImageWrapper/RemoteResourceSettings.cxx
+  Logic/ImageWrapper/SSHConnectionPool.cxx
+  Logic/ImageWrapper/VTIImageIO.cxx
   Logic/ImageWrapper/MultiChannelDisplayMode.cxx
   Logic/ImageWrapper/MeshDisplayMappingPolicy.cxx
   Logic/ImageWrapper/ScalarImageHistogram.cxx
@@ -309,6 +316,7 @@ SET(LOGIC_CXX
   Logic/WorkspaceAPI/CSVParser.cxx
   Logic/WorkspaceAPI/FormattedTable.cxx
   Logic/WorkspaceAPI/RESTClient.cxx
+  Logic/WorkspaceAPI/SSHTunnel.cxx
   Logic/WorkspaceAPI/WorkspaceAPI.cxx
 )
 
@@ -316,7 +324,12 @@ SET(LOGIC_CXX
 SET(LOGIC_HEADERS
   ${SNAP_BINARY_DIR}/GPUSettings.h
   Common/AbstractModel.h
+  Common/AbstractProgressDelegate.h
   Common/AbstractPropertyContainerModel.h
+  Common/AbstractSSHAuthDelegate.h
+  Common/StdoutProgressDelegate.h
+  Common/StdoutSSHAuthDelegate.h
+  Common/AbstractSSHAuthDelegate.h
   Common/AffineTransformHelper.h
   Common/ColorLabelPropertyModel.h
   Common/CommandLineArgumentParser.h
@@ -329,8 +342,6 @@ SET(LOGIC_HEADERS
   Common/IRISVectorTypes.h
   Common/IRISVectorTypes.txx
   Common/IRISVectorTypesToITKConversion.h
-  Common/ITKExtras/itkBSplineScatteredDataPointSetToImageFilter.h
-  Common/ITKExtras/itkBSplineScatteredDataPointSetToImageFilter.txx
   Common/ITKExtras/itkBinaryDiamondStructuringElement.h
   Common/ITKExtras/itkBinaryDiamondStructuringElement.txx
   Common/ITKExtras/itkCoxDeBoorBSplineKernelFunction.h
@@ -355,6 +366,7 @@ SET(LOGIC_HEADERS
   Common/SNAPEvents.h
   Common/SystemInterface.h
   Common/TagList.h
+  Logic/Common/BrushWatershedPipeline.hxx
   Logic/Common/ColorLabel.h
   Logic/Common/ColorLabelTable.h
   Logic/Common/ColorMap.h
@@ -386,7 +398,12 @@ SET(LOGIC_HEADERS
   Logic/Framework/UndoDataManager.h
   Logic/Framework/UndoDataManager.txx
   Logic/ImageWrapper/DisplayMappingPolicy.h
+  Logic/ImageWrapper/FlywheelRemoteImageSource.h
   Logic/ImageWrapper/GuidedNativeImageIO.h
+  Logic/ImageWrapper/ImageIORemote.h
+  Logic/ImageWrapper/RemoteFileCache.h
+  Logic/ImageWrapper/RemoteResourceSettings.h
+  Logic/ImageWrapper/VTIImageIO.h
   Logic/ImageWrapper/ImageWrapper.h
   Logic/ImageWrapper/ImageWrapperBase.h
   Logic/ImageWrapper/ImageWrapperTraits.h
@@ -398,6 +415,7 @@ SET(LOGIC_HEADERS
   Logic/ImageWrapper/MeshDisplayMappingPolicy.h
   Logic/ImageWrapper/VectorToScalarImageAccessor.h
   Logic/ImageWrapper/WrapperBase.h
+  Logic/ImageWrapper/SSHConnectionPool.h
   Logic/RLEImage/RLEImage.h
   Logic/RLEImage/RLEImage.txx
   Logic/RLEImage/RLEImageConstIterator.h
@@ -479,6 +497,7 @@ SET(LOGIC_HEADERS
   Logic/WorkspaceAPI/CSVParser.h
   Logic/WorkspaceAPI/FormattedTable.h
   Logic/WorkspaceAPI/RESTClient.h
+  Logic/WorkspaceAPI/SSHTunnel.h
   Logic/WorkspaceAPI/WorkspaceAPI.h
   Common/ITKBinaryWeightedAverage/itkBWAfilter.h
   Common/ITKBinaryWeightedAverage/itkBWAfilter.hxx
@@ -498,6 +517,7 @@ SET(UI_GENERIC_CXX
   GUI/Model/ColorLabelQuickListModel.cxx
   GUI/Model/ColorMapModel.cxx
   GUI/Model/CursorInspectionModel.cxx
+  GUI/Model/DeepLearningSegmentationModel.cxx
   GUI/Model/DeformationGridModel.cxx
   GUI/Model/DisplayLayoutModel.cxx
   GUI/Model/DistributedSegmentationModel.cxx
@@ -543,7 +563,6 @@ SET(UI_GENERIC_CXX
   GUI/Renderer/CrosshairsRenderer.cxx
   GUI/Renderer/DeformationGridRenderer.cxx
   GUI/Renderer/EdgePreprocessingSettingsRenderer.cxx
-  GUI/Renderer/GenericSliceContextItem.cxx
   GUI/Renderer/GenericSliceRenderer.cxx
   GUI/Renderer/Generic3DRenderer.cxx
   GUI/Renderer/GMMRenderer.cxx
@@ -579,6 +598,7 @@ SET(UI_GENERIC_HEADERS
   GUI/Model/ColorMapModel.h
   GUI/Model/ColorLabelQuickListModel.h
   GUI/Model/CursorInspectionModel.h
+  GUI/Model/DeepLearningSegmentationModel.h
   GUI/Model/DeformationGridModel.h
   GUI/Model/DisplayLayoutModel.h
   GUI/Model/DistributedSegmentationModel.h
@@ -620,6 +640,7 @@ SET(UI_GENERIC_HEADERS
   GUI/Model/UIState.h
   GUI/Model/VoxelChangeReportModel.h
   GUI/Renderer/AbstractRenderer.h
+  GUI/Renderer/AbstractContextBasedRenderer.h
   GUI/Renderer/AbstractVTKRenderer.h
   GUI/Renderer/AbstractVTKSceneRenderer.h
   GUI/Renderer/AnnotationRenderer.h
@@ -628,7 +649,6 @@ SET(UI_GENERIC_HEADERS
   GUI/Renderer/DeformationGridRenderer.h
   GUI/Renderer/EdgePreprocessingSettingsRenderer.h
   GUI/Renderer/Generic3DRenderer.h
-  GUI/Renderer/GenericSliceContextItem.h
   GUI/Renderer/GenericSliceRenderer.h
   GUI/Renderer/GMMRenderer.h
   GUI/Renderer/IntensityCurveVTKRenderer.h
@@ -679,15 +699,22 @@ SET(UI_QT_CXX
   GUI/Qt/Components/GeneralLayerInspector.cxx
   GUI/Qt/Components/PaintbrushToolPanel.cxx
   GUI/Qt/Components/PolygonToolPanel.cxx
+  GUI/Qt/Components/ProgressReportDialog.cxx
+  GUI/Qt/Components/ProgressReportWidget.cxx
+  GUI/Qt/Components/QtSSHAuthDelegate.cxx
   GUI/Qt/Components/QActionButton.cxx
   GUI/Qt/Components/QColorButtonWidget.cxx
   GUI/Qt/Components/QDoubleSlider.cxx
   GUI/Qt/Components/QDoubleSliderWithEditor.cxx  
+  GUI/Qt/Components/QPainterRenderContext.cxx
+  GUI/Qt/Components/QtLocalDeepLearningServerDelegate.cxx
   GUI/Qt/Components/QtFlowLayout.cxx
+  GUI/Qt/Components/QtFrameBufferOpenGLWidget.cxx
   GUI/Qt/Components/QtHideOnDeactivateContainer.cxx
   GUI/Qt/Components/QtIPCManager.cxx
   GUI/Qt/Components/QtRendererPlatformSupport.cxx
   GUI/Qt/Components/QtReporterDelegates.cxx
+  GUI/Qt/Components/QProcessOutputTextWidget.cxx
   GUI/Qt/Components/QtWarningDialog.cxx
   GUI/Qt/Components/QtWidgetActivator.cxx
   GUI/Qt/Components/RecentHistoryItemsView.cxx
@@ -697,7 +724,9 @@ SET(UI_QT_CXX
   GUI/Qt/Components/SNAPToolbar.cxx
   GUI/Qt/Components/SNAPQApplication.cxx
   GUI/Qt/Components/SNAPQtCommon.cxx
+  GUI/Qt/Components/SNAPQtCommonTranslations.cxx
   GUI/Qt/Components/SliceViewPanel.cxx
+  GUI/Qt/Components/SSHTunnelWorkerThread.cxx
   GUI/Qt/Components/SynchronizationInspector.cxx
   GUI/Qt/Components/TagListWidget.cxx
   GUI/Qt/Components/ViewPanel3D.cxx
@@ -708,7 +737,6 @@ SET(UI_QT_CXX
   GUI/Qt/View/AnnotationInteractionMode.cxx
   GUI/Qt/View/ColorMapInteractionDelegate.cxx
   GUI/Qt/View/CrosshairsInteractionMode.cxx
-  GUI/Qt/View/GenericSliceView.cxx
   GUI/Qt/View/GenericView3D.cxx
   GUI/Qt/View/InteractionModeClient.cxx
   GUI/Qt/View/QtInteractionDelegateWidget.cxx
@@ -722,6 +750,9 @@ SET(UI_QT_CXX
   GUI/Qt/View/ThumbnailInteractionMode.cxx
   GUI/Qt/Windows/AboutDialog.cxx
   GUI/Qt/Windows/AnnotationEditDialog.cxx
+  GUI/Qt/Windows/DeepLearningInfoDialog.cxx
+  GUI/Qt/Windows/DeepLearningServerEditor.cxx
+  GUI/Qt/Windows/DeepLearningServerPanel.cxx
   GUI/Qt/Windows/DropActionDialog.cxx
   GUI/Qt/Windows/ImageIODialog.cxx
   GUI/Qt/Windows/ImageIOWizard.cxx
@@ -780,6 +811,9 @@ SET(UI_MOC_HEADERS
   GUI/Qt/Components/GeneralLayerInspector.h
   GUI/Qt/Components/PaintbrushToolPanel.h
   GUI/Qt/Components/PolygonToolPanel.h
+  GUI/Qt/Components/ProgressReportDialog.h
+  GUI/Qt/Components/ProgressReportWidget.h
+  GUI/Qt/Components/QtSSHAuthDelegate.h
   GUI/Qt/Components/QActionButton.h
   GUI/Qt/Components/QColorButtonWidget.h
   GUI/Qt/Components/QDoubleSlider.h
@@ -787,6 +821,8 @@ SET(UI_MOC_HEADERS
   GUI/Qt/Components/QtFlowLayout.h
   GUI/Qt/Components/QtHideOnDeactivateContainer.h
   GUI/Qt/Components/QtIPCManager.h
+  GUI/Qt/Components/QtLocalDeepLearningServerDelegate.h
+  GUI/Qt/Components/QProcessOutputTextWidget.h
   GUI/Qt/Components/QtWarningDialog.h
   GUI/Qt/Components/QtWidgetActivator.h
   GUI/Qt/Components/RecentHistoryItemsView.h
@@ -796,6 +832,8 @@ SET(UI_MOC_HEADERS
   GUI/Qt/Components/SNAPToolbar.h
   GUI/Qt/Components/SNAPQApplication.h
   GUI/Qt/Components/SliceViewPanel.h
+  GUI/Qt/Components/SNAPQtCommonTranslations.h
+  GUI/Qt/Components/SSHTunnelWorkerThread.h
   GUI/Qt/Components/SynchronizationInspector.h
   GUI/Qt/Components/TagListWidget.h
   GUI/Qt/Components/ViewPanel3D.h
@@ -807,7 +845,6 @@ SET(UI_MOC_HEADERS
   GUI/Qt/View/AnnotationInteractionMode.h
   GUI/Qt/View/ColorMapInteractionDelegate.h
   GUI/Qt/View/CrosshairsInteractionMode.h
-  GUI/Qt/View/GenericSliceView.h
   GUI/Qt/View/GenericView3D.h
   GUI/Qt/View/QtInteractionDelegateWidget.h
   GUI/Qt/View/QtVTKInteractionDelegateWidget.h
@@ -820,6 +857,9 @@ SET(UI_MOC_HEADERS
   GUI/Qt/View/ThumbnailInteractionMode.h
   GUI/Qt/Windows/AboutDialog.h
   GUI/Qt/Windows/AnnotationEditDialog.h
+  GUI/Qt/Windows/DeepLearningInfoDialog.h
+  GUI/Qt/Windows/DeepLearningServerEditor.h
+  GUI/Qt/Windows/DeepLearningServerPanel.h
   GUI/Qt/Windows/DropActionDialog.h
   GUI/Qt/Windows/ImageIODialog.h
   GUI/Qt/Windows/ImageIOWizard.h
@@ -856,8 +896,12 @@ SET(UI_MOC_HEADERS
 
 # These UI headers don't need to be MOC'd
 SET(UI_NONMOC_HEADERS
+  GUI/Qt/Components/DeepLearningConnectionStatusCouplingTraits.h
   GUI/Qt/Components/ProcessEventsITKCommand.h
+  GUI/Qt/Components/QPainterRenderContext.h
   GUI/Qt/Components/QtCursorOverride.h
+  GUI/Qt/Components/QtProgressDelegate.h
+  GUI/Qt/Components/QtFrameBufferOpenGLWidget.h
   GUI/Qt/Components/QtRendererPlatformSupport.h
   GUI/Qt/Components/QtReporterDelegates.h
   GUI/Qt/Components/SNAPQtCommon.h
@@ -910,6 +954,9 @@ SET(UI_FORMS
   GUI/Qt/Components/ZoomInspector.ui
   GUI/Qt/Windows/AboutDialog.ui
   GUI/Qt/Windows/AnnotationEditDialog.ui
+  GUI/Qt/Windows/DeepLearningInfoDialog.ui
+  GUI/Qt/Windows/DeepLearningServerEditor.ui
+  GUI/Qt/Windows/DeepLearningServerPanel.ui
   GUI/Qt/Windows/DropActionDialog.ui
   GUI/Qt/Windows/ImageIODialog.ui
   GUI/Qt/Windows/ImageIOWizard/OverlayRolePage.ui
@@ -1006,6 +1053,7 @@ ELSE( CMAKE_GENERATOR MATCHES "Visual Studio 6" )
   # Include directories
   SET(SNAP_INCLUDE_DIRS
     ${SNAP_SOURCE_DIR}/Common
+    ${SNAP_SOURCE_DIR}/Common/tdigest_apache/
     ${SNAP_SOURCE_DIR}/Common/ITKExtras
     ${SNAP_SOURCE_DIR}/Common/JSon
     ${SNAP_SOURCE_DIR}/Common/ITKBinaryWeightedAverage
@@ -1029,7 +1077,6 @@ ELSE( CMAKE_GENERATOR MATCHES "Visual Studio 6" )
     ${SNAP_SOURCE_DIR}/Submodules/c3d/adapters
     ${SNAP_SOURCE_DIR}/Submodules/greedy/src
     ${SNAP_SOURCE_DIR}/Submodules/greedy/src/ITKFilters/include
-    ${SNAP_SOURCE_DIR}/Submodules/digestible/include
     ${SNAP_SOURCE_DIR}/GUI
     ${SNAP_SOURCE_DIR}/GUI/Model
     ${SNAP_SOURCE_DIR}/GUI/Renderer
@@ -1049,6 +1096,7 @@ ELSE( CMAKE_GENERATOR MATCHES "Visual Studio 6" )
     ${SNAP_SOURCE_DIR}/GUI/Qt/Windows/Registration
     ${SNAP_SOURCE_DIR}/Testing/Logic
     ${SNAP_SOURCE_DIR}/Testing/GUI/Qt
+    ${SNAP_SOURCE_DIR}/Testing/GUI/Qt/SSHTunnelTest
     ${SNAP_SYSTEM_INCLUDE_DIRS}
   )
 
@@ -1099,9 +1147,9 @@ SET(SNAP_VTK_NONQT_LIBS
   VTK::InteractionStyle
   VTK::InteractionWidgets
   VTK::RenderingAnnotation
-  VTK::RenderingContext2D
   VTK::RenderingContextOpenGL2
   VTK::RenderingCore
+  VTK::RenderingExternal
   VTK::RenderingLOD
   VTK::RenderingOpenGL2
   VTK::RenderingUI
@@ -1124,6 +1172,7 @@ SET(SNAP_SUBMODULE_LIBS
 # System libraries
 SET(SNAP_SYSTEM_LIBS
   ${CURL_LIBRARIES}
+  ssh
   ${SYSTEM_LIBS}
 )
 
@@ -1140,8 +1189,8 @@ SET(SNAP_EXTERNAL_LIBS_LITE
   ${SNAP_SUBMODULE_LIBS}
   ${SNAP_ITK_LIBS}
   ${SNAP_VTK_NONQT_LIBS}
-  ${CURL_LIBRARIES}
-  ${SYSTEM_LIBS})
+  ${SNAP_SYSTEM_LIBS}
+)
 
 #--------------------------------------------------------------------------------
 # Include C3D Library as submodule
@@ -1235,17 +1284,29 @@ ENDIF(WIN32)
 SET(SNAP_BUNDLE_NAME ITK-SNAP)
 
 # Configure the executable's sources and libraries
-ADD_EXECUTABLE(${SNAP_BUNDLE_NAME} WIN32 ${SNAP_MAIN_SRC})
-TARGET_LINK_LIBRARIES(${SNAP_BUNDLE_NAME} ${SNAP_INTERNAL_LIBS} ${SNAP_EXTERNAL_LIBS})
+qt_add_executable(${SNAP_BUNDLE_NAME} WIN32 ${SNAP_MAIN_SRC})
+TARGET_LINK_LIBRARIES(${SNAP_BUNDLE_NAME} PRIVATE ${SNAP_INTERNAL_LIBS} ${SNAP_EXTERNAL_LIBS})
 TARGET_INCLUDE_DIRECTORIES(${SNAP_BUNDLE_NAME} PUBLIC ${SNAP_INCLUDE_DIRS})
+set_target_properties(${SNAP_BUNDLE_NAME} PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+#--------------------------------------------------------------------------------
+# QT Internationalization
+#--------------------------------------------------------------------------------
+
+set(QT_I18N_TRANSLATED_LANGUAGES de es zh_CN)
+string(JOIN " " QT_I18N_TRANSLATED_LANGUAGES_STRING ${QT_I18N_TRANSLATED_LANGUAGES})
+qt_add_translations(
+  TARGETS ${SNAP_BUNDLE_NAME}
+  SOURCE_TARGETS itksnapui_qt ${SNAP_BUNDLE_NAME}
+  TS_FILE_DIR GUI/Qt/Translations
+  TS_FILE_BASE itksnap
+)
 
 #--------------------------------------------------------------------------------
 # Testing-related executables
 #--------------------------------------------------------------------------------
 
 ENABLE_TESTING()
-
-include(BundleUtilities)
 
 # Acceleration factor for GUI tests
 SET(SNAP_GUI_TEST_ACCEL "1.0" CACHE STRING 
@@ -1256,7 +1317,7 @@ MARK_AS_ADVANCED(SNAP_GUI_TEST_ACCEL)
 SET(GUI_TESTS
   Workspace
   NaNs
-  4DContinuousRendering
+  4DContinuousRenderingD
   DiffSpace
   EdgeAttraction
   EchoCartesianDicomLoading
@@ -1269,8 +1330,10 @@ SET(GUI_TESTS
   MeshImport
   MeshWorkspace
   SegmentationMesh
+  4DReplayWithMeshUpdate
   VolumeRendering
   Reloading
+  SegmentationSwitching
   4DToMC
   MCTo4D
   DeformationGrid
@@ -1352,6 +1415,8 @@ add_test(NAME SlicingPerformanceTestZ150 COMMAND itkTestDriver
         Z 150 irisRLE
 )
 
+add_test(NAME TDigestTest COMMAND testTDigest ${TESTDATA_DIR}/tdigest_test.nii.gz 0.98)
+
 # This test basically checks whether we can build using the logic library onlu
 ADD_EXECUTABLE(logic_api_test
     Testing/Logic/IRISApplicationTest.cxx)
@@ -1360,11 +1425,60 @@ TARGET_INCLUDE_DIRECTORIES(logic_api_test PUBLIC ${SNAP_INCLUDE_DIRS})
 
 add_test(NAME IRISApplicationTest COMMAND logic_api_test)
 
+ADD_EXECUTABLE(remote_image_load_test
+    Testing/Logic/RemoteImageLoadTest.cxx)
+TARGET_LINK_LIBRARIES(remote_image_load_test ${SNAP_EXTERNAL_LIBS} itksnaplogic)
+TARGET_INCLUDE_DIRECTORIES(remote_image_load_test PUBLIC ${SNAP_INCLUDE_DIRS})
+
+# Base URL for GitHub raw content used by the remote tests below.
+set(GITHUB_TESTDATA_URL
+  "itksnap-https://raw.githubusercontent.com/pyushkevich/itksnap/refs/heads/master/Testing/TestData")
+
+# Test: load a single image over HTTPS and compare against the local copy.
+add_test(NAME RemoteImageLoadTest_SingleImage
+  COMMAND remote_image_load_test
+    --regression-test -g
+    "${GITHUB_TESTDATA_URL}/MRIcrop-orig.gipl.gz"
+    "${TESTDATA_DIR}/MRIcrop-orig.gipl.gz")
+
+# Test: load a workspace that includes a standalone mesh layer over HTTPS
+# and verify both the image layers and the mesh layer count match local.
+add_test(NAME RemoteImageLoadTest_WorkspaceWithMesh
+  COMMAND remote_image_load_test
+    --regression-test -w
+    "${GITHUB_TESTDATA_URL}/MRIcrop-with-mesh.itksnap"
+    "${TESTDATA_DIR}/MRIcrop-with-mesh.itksnap")
+
+# Test: cache behaviour — clear the cache, download a file, verify the cache
+# is populated with ETag/Last-Modified tokens, download again, and confirm
+# the file was not re-written (304 conditional-GET hit).
+add_test(NAME RemoteImageLoadTest_Cache
+  COMMAND remote_image_load_test
+    --test-cache
+    "${GITHUB_TESTDATA_URL}/MRIcrop-orig.gipl.gz")
+
+# Remote tests require network access; tag them so CI can skip them easily.
+set_tests_properties(
+  RemoteImageLoadTest_SingleImage
+  RemoteImageLoadTest_WorkspaceWithMesh
+  RemoteImageLoadTest_Cache
+  PROPERTIES
+    LABELS "Remote"
+    TIMEOUT 120)
+
+# Test: large-image size guard throws IRISException instead of crashing with SIGBUS
+ADD_EXECUTABLE(TestLargeImageCheck
+    Testing/Logic/TestLargeImageCheck.cxx)
+TARGET_LINK_LIBRARIES(TestLargeImageCheck ${SNAP_EXTERNAL_LIBS} itksnaplogic)
+TARGET_INCLUDE_DIRECTORIES(TestLargeImageCheck PUBLIC ${SNAP_INCLUDE_DIRS})
+
+add_test(NAME TestLargeImageCheck COMMAND TestLargeImageCheck ${TEMP})
+
 # Set up a test for each GUI test
 FOREACH(GUI_TEST ${GUI_TESTS})
 
   # Add the test
-  ADD_TEST(NAME ${GUI_TEST} COMMAND ${SNAP_BUNDLE_NAME} --test ${GUI_TEST} --testacc ${SNAP_GUI_TEST_ACCEL} --testdir "${TESTDATA_DIR}")
+  ADD_TEST(NAME ${GUI_TEST} COMMAND ${SNAP_BUNDLE_NAME} --test ${GUI_TEST} --testacc ${SNAP_GUI_TEST_ACCEL} --testdir "${TESTDATA_DIR}" --lang en)
 
   # Set the environment for the test to include Qt
   FILE(TO_NATIVE_PATH ${QT_BINARY_DIR} QT_BINARY_DIR_NATIVE)
@@ -1404,6 +1518,23 @@ TARGET_LINK_LIBRARIES(Test_OrientationWidget
 )
 
 TARGET_INCLUDE_DIRECTORIES(Test_OrientationWidget PUBLIC ${SNAP_INCLUDE_DIRS})
+
+# SSH tunnel test
+SET(SSH_TUNNEL_TEST_CXX
+  Testing/GUI/Qt/SSHTunnelTest/main.cxx
+)
+
+ADD_EXECUTABLE(ssh_tunnel_test
+  ${SSH_TUNNEL_TEST_CXX} ${MOC_SSH_TUNNEL_TEST_SRCS}
+)
+
+TARGET_LINK_LIBRARIES(ssh_tunnel_test
+  ${SNAP_INTERNAL_LIBS}
+  ${SNAP_EXTERNAL_LIBS}
+)
+
+TARGET_INCLUDE_DIRECTORIES(ssh_tunnel_test PUBLIC ${SNAP_INCLUDE_DIRS})
+
 
 INCLUDE(CTest)
 
@@ -1455,12 +1586,14 @@ IF(APPLE)
   SET(CPACK_PACKAGE_ICON ${SNAP_SOURCE_DIR}/Utilities/MacOS/BundleResources/itksnap.icns)
 
   # The keychain used to store codesigning certificate and the notary tool password
-  SET(SNAP_MACOS_KEYCHAIN "default" CACHE STRING "Keychain where the code signing certificate, notarize password are stored")
+  SET(SNAP_MACOS_KEYCHAIN "" CACHE STRING "Keychain where the code signing certificate, notarize password are stored")
   SET(SNAP_MACOS_KEYCHAIN_PASSWORD_FILE "" CACHE STRING "File containing the password to unlock the keychain")
   MARK_AS_ADVANCED(SNAP_MACOS_KEYCHAIN)
   MARK_AS_ADVANCED(SNAP_MACOS_KEYCHAIN_PASSWORD_FILE)
 
   # Code signing certificate - optional
+  # Make it possible to specify the certificate name in an environment variable
+  # because they contain spaces and CMake can't handle the spaces in -D arguments
   SET(SNAP_MACOSX_CODESIGN_CERT "" CACHE STRING "Name of the Apple Developer Certificate to sign application")
   MARK_AS_ADVANCED(SNAP_MACOSX_CODESIGN_CERT)
 
@@ -1473,6 +1606,16 @@ IF(APPLE)
   # Create a script that can unlock the keychain
   CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/Utilities/MacOS/unlock_keychain.cmake ${CMAKE_BINARY_DIR}/Utilities/MacOS/unlock_keychain.cmake @ONLY)
 
+  # Make it possible to specify the certificate name in an environment variable
+  # because they contain spaces and CMake can't handle the spaces in -D arguments
+  IF(NOT SNAP_MACOSX_CODESIGN_CERT)
+    IF(DEFINED ENV{ITKSNAP_MACOS_CODESIGN_CERTIFICATE})
+      SET(SNAP_MACOSX_CODESIGN_CERT "$ENV{ITKSNAP_MACOS_CODESIGN_CERTIFICATE}")
+      MESSAGE(STATUS "SNAP_MACOSX_CODESIGN_CERT set to '${SNAP_MACOSX_CODESIGN_CERT}' via environment")
+    ENDIF()
+  ENDIF()
+
+
   IF(SNAP_MACOSX_CODESIGN_CERT)
     SET(CPACK_BUNDLE_APPLE_CERT_APP ${SNAP_MACOSX_CODESIGN_CERT})
     SET(CPACK_BUNDLE_APPLE_ENTITLEMENTS ${SNAP_SOURCE_DIR}/Utilities/MacOS/BundleResources/entitlements.plist)
@@ -1480,7 +1623,7 @@ IF(APPLE)
 
     # TODO: there has to be some way to determine all the executables that are included in
     # the package but I spent an hour trying and I give up. So here it is, hard-coded.
-    SET(SNAP_MACOSX_CLI_EXES "c3d;c2d;c4d;c3d_affine_tool;greedy;greedy_template_average;itksnap-wt;itksnap;multi_chunk_greedy")
+    SET(SNAP_MACOSX_CLI_EXES "c3d;c2d;c4d;c3d_affine_tool;greedy;greedy_template_average;itksnap-wt;itksnap;multi_chunk_greedy;greedy_propagation")
     FOREACH(exe ${SNAP_MACOSX_CLI_EXES})
       LIST(APPEND CPACK_BUNDLE_APPLE_CODESIGN_FILES "/Contents/bin/${exe}")
     ENDFOREACH()
@@ -1515,48 +1658,82 @@ IF(APPLE)
     PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
     GROUP_EXECUTE GROUP_READ)
 
-  # Include the qt4 dependent libraries
-  include(${SNAP_SOURCE_DIR}/CMake/DeployQt5.cmake)
+  # Use Qt deployment script to take care of plugins
+  set(executable_path "../../../${SNAP_BUNDLE_NAME}.app")
 
-  # Include plugins
-  get_filename_component(QT_COCOA_PLUGIN "${QT_BINARY_DIR}/../plugins/platforms/libqcocoa.dylib" ABSOLUTE)
-  get_filename_component(QT_GIF_PLUGIN "${QT_BINARY_DIR}/../plugins/imageformats/libqgif.dylib" ABSOLUTE)
-  message(STATUS "QT_COCOA_PLUGIN=${QT_COCOA_PLUGIN}")
-  message(STATUS "QT_GIF_PLUGIN=${QT_GIF_PLUGIN}")
-
-  # Install with the plugin
-  install_qt5_executable(../../../${SNAP_BUNDLE_NAME}.app "${QT_GIF_PLUGIN};${QT_COCOA_PLUGIN}")
+  qt_generate_deploy_script(
+      TARGET ${SNAP_BUNDLE_NAME}
+      OUTPUT_SCRIPT deploy_script
+      CONTENT "
+  qt_deploy_runtime_dependencies(
+      EXECUTABLE \"${executable_path}\"
+      GENERATE_QT_CONF
+  )
+  qt_deploy_translations(
+      CATALOGS qtbase
+      LOCALES ${QT_I18N_TRANSLATED_LANGUAGES_STRING}
+  )")
+  install(SCRIPT ${deploy_script})
 
 ELSEIF(WIN32)
 
   # Install to the bin directory
-  INSTALL(TARGETS ${SNAP_BUNDLE_NAME} RUNTIME DESTINATION bin)
+  INSTALL(TARGETS ${SNAP_BUNDLE_NAME} RUNTIME_DEPENDENCY_SET deps RUNTIME DESTINATION bin)
 
-  # Include the qt4 dependent libraries
-  include(${SNAP_SOURCE_DIR}/CMake/DeployQt5.cmake)
+  # This code installs the .dll dependencies of ITK-SNAP that are not picked up by Qt
+  # Thank you: https://discourse.cmake.org/t/install-runtime-dependency-set-appdeps-does-nothing-install/9741/17
+  install(RUNTIME_DEPENDENCY_SET deps 
+    PRE_EXCLUDE_REGEXES
+      [=[api-ms-]=]
+      [=[ext-ms-]=]
+      [[kernel32\.dll]]
+      [[libc\.so\..*]] [[libgcc_s\.so\..*]] [[libm\.so\..*]] [[libstdc\+\+\.so\..*]]
+      [=[qt6]=]
+    POST_EXCLUDE_REGEXES
+      [=[.*system32\/.*\.dll]=]
+      [=[^\/(lib|usr\/lib|usr\/local\/lib\/lib64)]=]
+  )
 
   # Prepare a case-insensitive configuration check
   string(TOLOWER "${CMAKE_BUILD_TYPE}" config_lower)
 
-  # Make sure the GIF plugin is included
-  if(config_lower STREQUAL "debug")
-    MESSAGE(STATUS "Using Debug Mode Qt Plugins")
-    get_filename_component(QT_WIN_PLUGIN "${QT_BINARY_DIR}/../plugins/platforms/qwindowsd.dll" ABSOLUTE)
-    get_filename_component(QT_GIF_PLUGIN "${QT_BINARY_DIR}/../plugins/imageformats/qgifd.dll" ABSOLUTE)
-  else(config_lower STREQUAL "release")
-    MESSAGE(STATUS "Using Release Mode Qt Plugins")
-    get_filename_component(QT_WIN_PLUGIN "${QT_BINARY_DIR}/../plugins/platforms/qwindows.dll" ABSOLUTE)
-    get_filename_component(QT_GIF_PLUGIN "${QT_BINARY_DIR}/../plugins/imageformats/qgif.dll" ABSOLUTE)
-  endif(config_lower STREQUAL "debug")
-
-  message(STATUS "QT_WIN_PLUGIN=${QT_WIN_PLUGIN}")
-  message(STATUS "QT_GIF_PLUGIN=${QT_GIF_PLUGIN}")
-
-  # get_property(QT_WIN_PLUGIN TARGET Qt6::QWindowsIntegrationPlugin PROPERTY LOCATION_RELEASE)
-  # get_property(QT_GIF_PLUGIN TARGET Qt6::QGifPlugin PROPERTY LOCATION_RELEASE)
+  # On Windows, the libssh library does not seem to install automatically unless we manually
+  # install it and its dependencies. This code finds the ssh.dll and libcrypto-3-x64.dll and
+  # installs them in the bin directory
+  #get_target_property(SSH_IMPORTED_LOCATION ssh LOCATION)
+  #get_filename_component(SSH_DLL_PATH "${SSH_IMPORTED_LOCATION}" DIRECTORY)
+  #MESSAGE(STATUS "SSH_DLL_PATH is ${SSH_DLL_PATH}")
+  #find_file(SSH_DLL_FILE
+  #  NAMES ssh.dll
+  #  PATHS "${SSH_DLL_PATH}"
+  #  NO_DEFAULT_PATH
+  #)
+  #find_file(SSH_LIBCRYPTO_FILE
+  #  NAMES libcrypto-3-x64.dll
+  #  PATHS "${SSH_DLL_PATH}"
+  #  NO_DEFAULT_PATH
+  #)
+  #if(SSH_DLL_FILE AND SSH_LIBCRYPTO_FILE)
+  #  message(STATUS "Installing LIBSSH DLL files: ${SSH_DLL_FILE} and ${SSH_LIBCRYPTO_FILE}")
+  #  install(FILES "${SSH_DLL_FILE}" "${SSH_LIBCRYPTO_FILE}" DESTINATION bin)
+  #else()
+  #  message(WARNING "ssh.dll and/or libcrypto-3-x64.dll not found in ${SSH_DLL_PATH}")
+  #endif()
 
   # Install with the plugin
-  install_qt5_executable(bin/${SNAP_BUNDLE_NAME}.exe "${QT_GIF_PLUGIN};${QT_WIN_PLUGIN}"  "" "${VTK_RUNTIME_LIBRARY_DIRS}")
+  qt_generate_deploy_script(
+      TARGET ${SNAP_BUNDLE_NAME}
+      OUTPUT_SCRIPT deploy_script
+      CONTENT "
+  qt_deploy_runtime_dependencies(
+      EXECUTABLE \"bin/${SNAP_BUNDLE_NAME}.exe\"
+      GENERATE_QT_CONF
+  )
+  qt_deploy_translations(
+      CATALOGS qtbase
+      LOCALES ${QT_I18N_TRANSLATED_LANGUAGES_STRING}
+  )")
+  install(SCRIPT ${deploy_script})
 
   # On windows, we have to configure NSIS
   SET(CPACK_NSIS_MUI_ICON "${SNAP_SOURCE_DIR}/Utilities/Win32/snaplogo.ico")
@@ -1580,14 +1757,40 @@ ELSEIF(WIN32)
 
   # On Win32, we must include the redistributable
   IF(MSVC_VERSION GREATER 1399)
-    FIND_PROGRAM(VCREDIST_EXE vcredist_x86.exe vcredist_x64.exe)
+
+    # Determine which redistributable to use
+    IF(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+      SET(VCREDIST_SEARCH_NAME vc_redist.arm64.exe)
+    ELSEIF(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86")
+      SET(VCREDIST_SEARCH_NAME vc_redist.x86.exe vcredist_x86.exe)
+    ELSE(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+      SET(VCREDIST_SEARCH_NAME vc_redist.x64.exe vcredist_x64.exe)
+    ENDIF()
+
+    FIND_PROGRAM(VCREDIST_EXE NAMES ${VCREDIST_SEARCH_NAME} PATHS $ENV{VCToolsRedistDir})
     IF(VCREDIST_EXE)
+      MESSAGE(STATUS "Found MSVC redistributable ${VCREDIST_EXE}")
       GET_FILENAME_COMPONENT(VCREDIST_NAME ${VCREDIST_EXE} NAME)
       INSTALL(FILES ${VCREDIST_EXE} DESTINATION bin)
       SET(CPACK_NSIS_EXTRA_INSTALL_COMMANDS 
         "ExecWait '\\\"$INSTDIR\\\\bin\\\\${VCREDIST_NAME}\\\" /passive'")
     ENDIF(VCREDIST_EXE)
   ENDIF(MSVC_VERSION GREATER 1399)
+
+  # Register itksnap-sftp://, itksnap-scp://, itksnap-https://, itksnap-http://, and itksnap-fw://
+  # as URL scheme handlers so that tools and web pages can open remote files
+  # directly in ITK-SNAP.
+  foreach(_scheme itksnap-sftp itksnap-scp itksnap-https itksnap-http itksnap-fw)
+    STRING(APPEND CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+      WriteRegStr HKCR '${_scheme}' '' 'URL: ITK-SNAP ${_scheme}'
+      WriteRegStr HKCR '${_scheme}' 'URL Protocol' ''
+      WriteRegStr HKCR '${_scheme}\\\\DefaultIcon' '' '$INSTDIR\\\\bin\\\\ITK-SNAP.exe,0'
+      WriteRegStr HKCR '${_scheme}\\\\shell\\\\open\\\\command' '' '$INSTDIR\\\\bin\\\\ITK-SNAP.exe --url \\\"%1\\\"'
+      ")
+    STRING(APPEND CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+      DeleteRegKey HKCR '${_scheme}'
+      ")
+  endforeach()
 
   # Try setting the MSVC environment so we can debug from MSVC
   set_target_properties(ITK-SNAP PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:ITK-SNAP>"
@@ -1605,41 +1808,25 @@ ELSE()
   SET(CPACK_PACKAGE_EXECUTABLES "itksnap" "ITK-SNAP")
   INSTALL(TARGETS ${SNAP_BUNDLE_NAME} RUNTIME DESTINATION ${SNAP_MAIN_INSTALL_DIR})
 
-  # Include the qt4 dependent libraries
-  include(${SNAP_SOURCE_DIR}/CMake/DeployQt5.cmake)
+  # Use Qt deployment script to take care of plugins
+  set(executable_path "${SNAP_MAIN_INSTALL_DIR}/${SNAP_BUNDLE_NAME}")
 
-  # Add an option to not package QT plugins. This is needed for some special builds,
-  # for example on Debian
-  OPTION(SNAP_PACKAGE_QT_PLUGINS "Try to package Qt5 plugins with the executable" ON)
-  MARK_AS_ADVANCED(SNAP_PACKAGE_QT_PLUGINS)
-
-  # Get the necessary plugins
-  IF(SNAP_PACKAGE_QT_PLUGINS)
-
-    get_filename_component(QT_XCB_GLX_PLUGIN "${QT_BINARY_DIR}/../plugins/xcbglintegrations/libqxcb-glx-integration.so" ABSOLUTE)
-    get_filename_component(QT_XCB_EGL_PLUGIN "${QT_BINARY_DIR}/../plugins/xcbglintegrations/libqxcb-egl-integration.so" ABSOLUTE)
-    get_filename_component(QT_XCB_PLUGIN "${QT_BINARY_DIR}/../plugins/platforms/libqxcb.so" ABSOLUTE)
-    get_filename_component(QT_GIF_PLUGIN "${QT_BINARY_DIR}/../plugins/imageformats/libqgif.so" ABSOLUTE)
-    message(STATUS "QT_XCB_GLX_PLUGIN=${QT_XCB_GLX_PLUGIN}")
-    message(STATUS "QT_XCB_EGL_PLUGIN=${QT_XCB_EGL_PLUGIN}")
-    message(STATUS "QT_XCB_PLUGIN=${QT_XCB_PLUGIN}")
-    message(STATUS "QT_GIF_PLUGIN=${QT_GIF_PLUGIN}")
-
-    # get_property(QT_XCB_PLUGIN TARGET Qt6::QXcbIntegrationPlugin PROPERTY LOCATION_RELEASE)
-    # get_property(QT_XCB_GLX_PLUGIN TARGET Qt6::QXcbEglIntegrationPlugin PROPERTY LOCATION_RELEASE)
-    # get_property(QT_XCB_GLX_PLUGIN TARGET Qt::QGifPlugin PROPERTY LOCATION_RELEASE)
-    # get_property(QT_GIF_PLUGIN TARGET Qt6::QGifPlugin PROPERTY LOCATION_RELEASE)
-
-    # Install the plugin
-    install_qt5_executable(${SNAP_MAIN_INSTALL_DIR}/${SNAP_EXE}
-      "${QT_XCB_PLUGIN};${QT_GIF_PLUGIN};${QT_XCB_GLX_PLUGIN};${QT_XCB_EGL_PLUGIN}")
-
-  ELSE(SNAP_PACKAGE_QT_PLUGINS)
-
-    # Install the exe without plugins
-    install_qt5_executable(${SNAP_MAIN_INSTALL_DIR}/${SNAP_EXE})
-
-  ENDIF(SNAP_PACKAGE_QT_PLUGINS)
+  qt_generate_deploy_script(
+      TARGET ${SNAP_BUNDLE_NAME}
+      OUTPUT_SCRIPT deploy_script
+      CONTENT "
+  qt_deploy_runtime_dependencies(
+      EXECUTABLE \"${executable_path}\"
+      GENERATE_QT_CONF
+      LIB_DIR \"${SNAP_MAIN_INSTALL_DIR}\"
+      PLUGINS_DIR \"${SNAP_MAIN_INSTALL_DIR}\"
+      VERBOSE
+  )
+  qt_deploy_translations(
+      CATALOGS qtbase
+      LOCALES ${QT_I18N_TRANSLATED_LANGUAGES_STRING}
+  )")
+  install(SCRIPT ${deploy_script})
 
 ENDIF()
 
@@ -1688,6 +1875,12 @@ ENDIF(APPLE)
 # Construct the name of the package
 SET(CPACK_PACKAGE_FILE_NAME_WEXT "${CPACK_PACKAGE_FILE_NAME}.${CPACK_EXTENSION}")
 
+# Write the package name to a file in the build directory - to help external tools
+# know what the current package name is expected to be
+CONFIGURE_FILE(
+    ${CMAKE_CURRENT_SOURCE_DIR}/Utilities/package_info.json
+    ${CMAKE_CURRENT_BINARY_DIR}/package_info.json
+    @ONLY)
 
 #--------------------------------------------------------------------------------
 # Uploading code to SourceForge
@@ -1715,21 +1908,21 @@ SET(SCP_ROOT "frs.sourceforge.net:/home/frs/project/itk-snap/itk-snap")
 # Create targets
 
 ADD_CUSTOM_TARGET(itksnap_upload_nightly
-  VERBATIM COMMAND "${SCP_PROGRAM}" ${SCP_ARGUMENTS}
+  VERBATIM COMMAND "${SCP_PROGRAM}" -o BatchMode=yes ${SCP_ARGUMENTS}
   ${CPACK_PACKAGE_FILE_NAME_WEXT} ${SCP_USERNAME},itk-snap@${SCP_ROOT}/Nightly/${NIGHTLY_TARGET}
   DEPENDS ${CPACK_TARGET}
   WORKING_DIRECTORY ${SNAP_BINARY_DIR}
   COMMENT "Uploading package ${CPACK_PACKAGE_FILE_NAME_WEXT} to SourceForge.net as ${NIGHTLY_TARGET}")
 
 ADD_CUSTOM_TARGET(itksnap_upload_experimental
-  VERBATIM COMMAND "${SCP_PROGRAM}" ${SCP_ARGUMENTS} 
+  VERBATIM COMMAND "${SCP_PROGRAM}" -o BatchMode=yes ${SCP_ARGUMENTS}
     ${CPACK_PACKAGE_FILE_NAME_WEXT} ${SCP_USERNAME},itk-snap@${SCP_ROOT}/Experimental/${EXPERIMENTAL_TARGET}
   DEPENDS ${CPACK_TARGET}
   WORKING_DIRECTORY ${SNAP_BINARY_DIR}
   COMMENT "Uploading package ${CPACK_PACKAGE_FILE_NAME_WEXT} to SourceForge.net as ${EXPERIMENTAL_TARGET}")
 
 ADD_CUSTOM_TARGET(itksnap_upload_release
-  VERBATIM COMMAND "${SCP_PROGRAM}" ${SCP_ARGUMENTS} 
+  VERBATIM COMMAND "${SCP_PROGRAM}" -o BatchMode=yes ${SCP_ARGUMENTS}
     ${CPACK_PACKAGE_FILE_NAME_WEXT} ${SCP_USERNAME},itk-snap@${SCP_ROOT}/${SNAP_VERSION_FULL}/${RELEASE_TARGET}
   DEPENDS ${CPACK_TARGET}
   WORKING_DIRECTORY ${SNAP_BINARY_DIR}

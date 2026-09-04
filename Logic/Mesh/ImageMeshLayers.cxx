@@ -1,4 +1,5 @@
 #include "ImageMeshLayers.h"
+#include "ImageIORemote.h"
 #include "Rebroadcaster.h"
 #include "SNAPEvents.h"
 #include "SNAPImageData.h"
@@ -26,13 +27,17 @@ ImageMeshLayers::AddLayer(MeshWrapperBase *meshLayer, bool notifyInspector)
   unsigned long id = meshLayer->GetUniqueId();
   m_Layers[id] = meshLayer;
 
-  Rebroadcaster::Rebroadcast(meshLayer, ValueChangedEvent(),
-                             this, ActiveLayerChangeEvent());
-  Rebroadcaster::Rebroadcast(meshLayer, WrapperDisplayMappingChangeEvent(),
-                             this, WrapperDisplayMappingChangeEvent());
+  Rebroadcaster::Rebroadcast(meshLayer, ValueChangedEvent(), this, MeshContentChangeEvent());
+  Rebroadcaster::Rebroadcast(
+    meshLayer, WrapperDisplayMappingChangeEvent(), this, WrapperDisplayMappingChangeEvent());
+  Rebroadcaster::Rebroadcast(
+    meshLayer, WrapperMetadataChangeEvent(), this, WrapperMetadataChangeEvent());
 
   // Invoke to trigger initial rendering of the mesh
   SetActiveLayerId(id);
+
+  for (auto index : DisplaySliceIndices)
+    meshLayer->SetDisplayViewportGeometry(index, m_ImageData->GetDisplayViewportGeometry(index));
 
   // Invoke to trigger rebuild of the layer inspector row
   if (notifyInspector)
@@ -127,7 +132,7 @@ ImageMeshLayers
 
   if (m_IsSNAP)
     {
-    auto snap = dynamic_cast<SNAPImageData*>(m_ImageData.GetPointer());
+    auto snap = dynamic_cast<SNAPImageData*>(m_ImageData);
 
     // if failed, check constructor why m_isSNAP is true
     assert(snap);
@@ -188,12 +193,16 @@ ImageMeshLayers
   SmartPtr<MeshWrapperBase> baseWrapper = wrapper.GetPointer();
 
   auto app = m_ImageData->GetParent();
+  IO.SetContext(app->GetRemoteIOContext());
 
   size_t tp = startFromTP - 1; // tp storage is 0-based
   size_t nt = nt = app->GetNumberOfTimePoints();
 
   // We pick the first filename as placeholder of the wrapper filename
-  wrapper->SetFileName(*fn_list.begin());
+  std::string first_fn = *fn_list.begin();
+  wrapper->SetFileName(first_fn);
+  if (IsRemoteImageURL(first_fn))
+    wrapper->SetRemoteURL(first_fn);
 
   // Load one file per time point until final time point is reached
   for (auto &fn : fn_list)
@@ -227,7 +236,8 @@ ImageMeshLayers
     auto folder_crnt_layer = folder_layers.Folder(layer_key);
     auto mesh_wrapper = StandaloneMeshWrapper::New();
     mesh_wrapper->LoadFromRegistry(folder_crnt_layer, project_dir_orig,
-                                   project_dir_crnt, m_ImageData->GetNumberOfTimePoints());
+                                   project_dir_crnt, m_ImageData->GetNumberOfTimePoints(),
+                                   m_ImageData->GetParent()->GetRemoteIOContext());
     AddLayer(mesh_wrapper, true);
 
     ++layer_id;
@@ -315,7 +325,7 @@ ImageMeshLayers::IsActiveMeshLayerDirty()
   if (m_IsSNAP)
     {
     // Dirty check for LevelSet Image
-    auto snap = static_cast<SNAPImageData*>(m_ImageData.GetPointer());
+    auto snap = static_cast<SNAPImageData*>(m_ImageData);
 
     assert(snap);
 
@@ -404,6 +414,7 @@ ImageMeshLayers
 {
   // Create a new IO for loading
   GuidedMeshIO IO;
+  IO.SetContext(m_ImageData->GetParent()->GetRemoteIOContext());
 
   // Get Mesh Layer
   auto layer = GetLayer(layer_id);

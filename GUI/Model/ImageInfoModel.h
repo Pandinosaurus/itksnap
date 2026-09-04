@@ -37,14 +37,14 @@ public:
   };
 
   // Implementation of virtual functions from parent class
-  void RegisterWithLayer(WrapperBase *layer) ITK_OVERRIDE {}
-  void UnRegisterFromLayer(WrapperBase *layer, bool being_deleted) ITK_OVERRIDE {}
+  void RegisterWithLayer(WrapperBase *layer) override {}
+  void UnRegisterFromLayer(WrapperBase *layer, bool being_deleted) override {}
 
   // Parent model assignment override
   virtual void SetParentModel(GlobalUIModel *parent);
 
   // Function called in response to events
-  virtual void OnUpdate() ITK_OVERRIDE;
+  virtual void OnUpdate() override;
 
   // Access state flags
   bool CheckState(UIState state);
@@ -72,7 +72,7 @@ public:
   irisSimplePropertyAccessMacro(MetadataFilter, std::string)
 
   // The voxel coordinate model just refers to the parent mode
-  AbstractRangedUIntVec3Property *GetReferenceSpaceVoxelCoordinatesModel() const
+  AbstractRangedIntVec3Property *GetReferenceSpaceVoxelCoordinatesModel() const
   {
     return m_ParentModel->GetCursorPositionModel();
   }

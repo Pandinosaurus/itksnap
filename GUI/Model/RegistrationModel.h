@@ -58,7 +58,7 @@ public:
   void SetParentModel(GlobalUIModel *model);
   irisGetMacro(Parent, GlobalUIModel *)
 
-  virtual void OnUpdate() ITK_OVERRIDE;
+  virtual void OnUpdate() override;
 
   typedef SimpleItemSetDomain<unsigned long, std::string> LayerSelectionDomain;
   typedef AbstractPropertyModel<unsigned long, LayerSelectionDomain> AbstractLayerSelectionModel;
@@ -76,7 +76,7 @@ public:
   irisGetMacro(ScalingModel, AbstractRangedDoubleVec3Property *)
 
   /** Scaling factor */
-  irisGetMacro(FlipModel, AbstractSimpleBooleanVec3Property *)
+  irisGetMacro(FlipModel, AbstractSimpleIntVec3Property *)
 
   /** Logarithm of the scaling factor - for the slider */
   irisGetMacro(LogScalingModel, AbstractRangedDoubleVec3Property *)
@@ -106,16 +106,14 @@ public:
   ImageWrapperBase *GetMovingLayerWrapper() const;
 
   /** Get the center of rotation, in voxel units of the main image */
-  irisGetMacro(RotationCenter, Vector3ui)
+  irisGetMacro(RotationCenter, Vector3i)
 
   // Automatic registration parameter domains
-  typedef SimpleItemSetDomain<Transformation, std::string> TransformationDomain;
-  typedef SimpleItemSetDomain<SimilarityMetric, std::string> SimilarityMetricDomain;
   typedef SimpleItemSetDomain<int, std::string> ResolutionLevelDomain;
 
   // Access to registration models
-  irisGenericPropertyAccessMacro(Transformation, Transformation, TransformationDomain)
-  irisGenericPropertyAccessMacro(SimilarityMetric, SimilarityMetric, SimilarityMetricDomain)
+  irisSimplePropertyAccessMacro(Transformation, Transformation)
+  irisSimplePropertyAccessMacro(SimilarityMetric, SimilarityMetric)
   irisSimplePropertyAccessMacro(UseSegmentationAsMask, bool)
   irisGenericPropertyAccessMacro(CoarsestResolutionLevel, int, ResolutionLevelDomain)
   irisGenericPropertyAccessMacro(FinestResolutionLevel, int, ResolutionLevelDomain)
@@ -186,7 +184,7 @@ protected:
   // parameters including scaling, euler angles, and translation
   void UpdateWrapperFromManualParameters();
 
-  void SetRotationCenter(const Vector3ui &pos);
+  void SetRotationCenter(const Vector3i &pos);
 
   // Get the transform currently stored in the moving layer
   void GetMovingTransform(ITKMatrixType &matrix, ITKVectorType &offset);
@@ -214,18 +212,18 @@ protected:
   bool GetScalingValueAndRange(Vector3d &value, NumericValueRange<Vector3d> *range);
   void SetScalingValue(Vector3d value);
 
-  SmartPtr<AbstractSimpleBooleanVec3Property> m_FlipModel;
-  bool GetFlipValue(Vector3b &value);
-  void SetFlipValue(Vector3b value);
+  SmartPtr<AbstractSimpleIntVec3Property> m_FlipModel;
+  bool GetFlipValue(Vector3i &value);
+  void SetFlipValue(Vector3i value);
 
   SmartPtr<AbstractRangedDoubleVec3Property> m_LogScalingModel;
   bool GetLogScalingValueAndRange(Vector3d &value, NumericValueRange<Vector3d> *range);
   void SetLogScalingValue(Vector3d value);
 
-  typedef ConcretePropertyModel<Transformation, TransformationDomain> TransformationModel;
+  typedef ConcretePropertyModel<Transformation, TrivialDomain> TransformationModel;
   SmartPtr<TransformationModel> m_TransformationModel;
 
-  typedef ConcretePropertyModel<SimilarityMetric, SimilarityMetricDomain> SimilarityMetricModel;
+  typedef ConcretePropertyModel<SimilarityMetric, TrivialDomain> SimilarityMetricModel;
   SmartPtr<SimilarityMetricModel> m_SimilarityMetricModel;
 
   SmartPtr<ConcreteSimpleBooleanProperty> m_UseSegmentationAsMaskModel;
@@ -283,7 +281,7 @@ protected:
     itk::TimeStamp UpdateTime;
 
     // Flipping
-    Vector3b Flip;
+    Vector3i Flip;
 
     TransformManualParameters() : LayerID(NOID) {}
   };
@@ -292,7 +290,7 @@ protected:
   TransformManualParameters m_ManualParam;
 
   // Current center of rotation - should be initialized to the center when new image is loaded
-  Vector3ui m_RotationCenter;
+  Vector3i m_RotationCenter;
 
   // Callback for when the transform being computed by auto-registration is modified
   void IterationCallback(const itk::Object *object, const itk::EventObject &event);

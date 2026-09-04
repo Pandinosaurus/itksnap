@@ -20,7 +20,7 @@ constexpr void add_value(const TValue &value, TDigest &tdigest, unsigned long &n
     {
     // Finite values are added to the TDigest
     if(std::isfinite(value))
-      tdigest.insert(value);
+      tdigest.update(value);
     else if(std::isnan(value))
       nan_count++;
 
@@ -28,7 +28,7 @@ constexpr void add_value(const TValue &value, TDigest &tdigest, unsigned long &n
     }
   else
     {
-    tdigest.insert(value);
+    tdigest.update(value);
     }
 };
 
@@ -42,7 +42,7 @@ constexpr void skip_value(const TValue &value, TValue &skip_min, TValue &skip_ma
     if(std::isfinite(value))
       {
       skip_min = std::min(value, skip_min);
-      skip_max = std::min(value, skip_max);
+      skip_max = std::max(value, skip_max);
       }
     else if(std::isnan(value))
       nan_count++;
@@ -50,7 +50,7 @@ constexpr void skip_value(const TValue &value, TValue &skip_min, TValue &skip_ma
   else
     {
     skip_min = std::min(value, skip_min);
-    skip_max = std::min(value, skip_max);
+    skip_max = std::max(value, skip_max);
     }
 };
 
@@ -113,10 +113,10 @@ public:
     {
     unsigned int ncomp = it.GetImage()->GetNumberOfComponentsPerPixel();
     unsigned int buffer_size_adj = ncomp * (buffer_size / ncomp);
-    for(n_read = 0; n_read < buffer_size_adj && !it.IsAtEnd(); ++it)
+    for(n_read = 0; n_read < (int) buffer_size_adj && !it.IsAtEnd(); ++it)
       {
       const auto &p = it.Get();
-      for(int k = 0; k < ncomp; k++, n_read++)
+      for(unsigned int k = 0; k < ncomp; k++, n_read++)
         buffer[n_read] = p[k];
       }
     }
@@ -231,7 +231,7 @@ void
 TDigestImageFilter<TInputImage>
 ::BeforeStreamedGenerateData()
 {
-  m_TDigestDataObject->m_Digest.reset();
+  m_TDigestDataObject->m_Digest = TDigestDataObject::TDigest(TDigestDataObject::DIGEST_SIZE);
   m_TDigestDataObject->m_NaNCount = 0;
 }
 
@@ -315,23 +315,20 @@ TDigestImageFilter<TInputImage>
       }
 
     // Incorporate the min/max into the digest.
-    if(skip_max > thread_digest.max())
-      thread_digest.insert(skip_max);
-    if(skip_min > thread_digest.min())
-      thread_digest.insert(skip_min);
+    if(skip_max > thread_digest.get_max_value())
+      thread_digest.update(skip_max);
+    if(skip_min > thread_digest.get_min_value())
+      thread_digest.update(skip_min);
     }
 
   // Get rid of the buffer
   delete[] buffer;
 
-  // Complete the digest
-  thread_digest.merge();
-
   // Use mutex to update the global heaps
   std::lock_guard<std::mutex> guard(m_Mutex);
 
   // Add current digest so the main digest
-  m_TDigestDataObject->m_Digest.insert(thread_digest);
+  m_TDigestDataObject->m_Digest.merge(thread_digest);
 
   // Update global nan count
   m_TDigestDataObject->m_NaNCount += thread_nan_count;

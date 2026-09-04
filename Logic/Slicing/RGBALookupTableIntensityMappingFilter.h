@@ -47,17 +47,29 @@ public:
   /** Get the intensity remapping curve - for contrast adjustment */
   itkGetInputMacro(LookupTable, LookupTableType)
 
+  /** Set the mapping mode to two-channel HSV */
+  void SetMappingModeToTwoChannelHueValue();
+
+  /** Set the mapping mode to two-channel HSV */
+  void SetMappingModeToThreeChannelRGB();
+
   /** The actual work */
-  void DynamicThreadedGenerateData(const OutputImageRegionType &region) ITK_OVERRIDE;
+  void DynamicThreadedGenerateData(const OutputImageRegionType &region) override;
 
   /** Process a single pixel */
   OutputPixelType MapPixel(const InputPixelType &xin0, const InputPixelType &xin1, const InputPixelType &xin2);
 
 
 protected:
-
+  bool m_TwoChannelHueValueMode = false;
   RGBALookupTableIntensityMappingFilter();
   virtual ~RGBALookupTableIntensityMappingFilter() {}
+  void MapPixelXYZtoRGB(
+      InputPixelType xin0, InputPixelType xin1, InputPixelType xin2,
+      const LookupTableType *lut, bool zero_out_of_range, OutputPixelType &xout);
+  void MapPixelXYtoHSV(
+      InputPixelType xin0, InputPixelType xin1,
+      const LookupTableType *lut, bool zero_out_of_range, OutputPixelType &xout);
 };
 
 

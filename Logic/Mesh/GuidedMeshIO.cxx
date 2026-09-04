@@ -2,14 +2,17 @@
 #include "MeshIODelegates.h"
 #include "MeshWrapperBase.h"
 #include "StandaloneMeshWrapper.h"
+#include "ImageIORemote.h"
 
 #include <itkMacro.h>
 #include <itksys/SystemTools.hxx>
 #include <vtkDataReader.h>
 #include <vtkPolyDataWriter.h>
+#include <vtkXMLPolyDataWriter.h>
 #include <vtkSTLWriter.h>
 #include <vtkBYUWriter.h>
 #include <vtkTriangleFilter.h>
+#include <vtkCleanPolyData.h>
 
 GuidedMeshIO
 ::GuidedMeshIO()
@@ -36,7 +39,7 @@ GuidedMeshIO::m_MeshFormatDescriptorMap =
   { FORMAT_STL, { "STL Mesh",   {".stl"},         false,  true } },
   { FORMAT_VRML,{ "VRML Scene", {".vrml"},        false,  true } },
   { FORMAT_VTK, { "VTK Mesh",   {".vtk"},         true,   true } },
-  { FORMAT_VTP, { "VTP Mesh",   {".vtp"},         true,   false } }
+  { FORMAT_VTP, { "VTP Mesh",   {".vtp"},         true,   true  } }
 };
 
 
@@ -51,6 +54,9 @@ GuidedMeshIO::FileFormat
 GuidedMeshIO::
 GetFormatByExtension(std::string extension)
 {
+  if (extension.empty()) // possible when reading dicom series
+    return FileFormat::FORMAT_COUNT;
+
   // All format string in the map include '.' prefix
   if (extension.at(0) != '.')
     extension.insert(0, 1, '.');
@@ -145,7 +151,15 @@ GuidedMeshIO
     writer->Delete();
     tri->Delete();
     }
-  else 
+  else if(format == FORMAT_VTP)
+    {
+    vtkXMLPolyDataWriter *writer = vtkXMLPolyDataWriter::New();
+    writer->SetInputData(mesh);
+    writer->SetFileName(FileName);
+    writer->Update();
+    writer->Delete();
+    }
+  else
     throw itk::ExceptionObject("Illegal format specified for saving image");
 }
 
@@ -153,15 +167,38 @@ void
 GuidedMeshIO::LoadMesh(const char *FileName, FileFormat format,
                        SmartPtr<MeshWrapperBase> wrapper, unsigned int tp, LabelType id)
 {
+  // For remote URLs (scp://, sftp://) download the mesh file to a local temp
+  // directory first, then load from the local copy.  The caller (MeshWrapperBase)
+  // already stores the remote URL as the wrapper's filename, so remote awareness
+  // is preserved without any additional bookkeeping here.
+  std::string local_filename = FileName;
+  if (IsRemoteImageURL(FileName))
+    local_filename = DownloadRemoteFile(FileName, m_Context);
+
   // Using the factory method to get a delegate
   AbstractMeshIODelegate *ioDelegate = AbstractMeshIODelegate::GetDelegate(format);
 
   if (ioDelegate)
     {
       // Apply IO logic of the delegate
-      vtkSmartPointer<vtkPolyData> polyData = ioDelegate->ReadPolyData(FileName);
+      vtkSmartPointer<vtkPolyData> polyData = ioDelegate->ReadPolyData(local_filename.c_str());
+
+      /*
+      // Clean the mesh - some external meshes have problems that slow rendering
+      vtkNew<vtkTriangleFilter> triangle;
+      vtkNew<vtkCleanPolyData> cleaner;
+      triangle->SetInputData(polyData);
+      cleaner->SetInputConnection(triangle->GetOutputPort());
+      cleaner->UpdateWholeExtent();
+      std::cout << "Polydata cleaner: "
+                << polyData->GetNumberOfPoints() << " -> " << cleaner->GetOutput()->GetNumberOfPoints() << " points; "
+                << polyData->GetNumberOfCells() << " -> " << cleaner->GetOutput()->GetNumberOfCells() << " cells."
+                << std::endl;
 
       // Set polydata into the wrapper
+      wrapper->SetMesh(cleaner->GetOutput(), tp, id);
+      */
+
       wrapper->SetMesh(polyData, tp, id);
 
       // Get poly data wrapper loaded
@@ -187,9 +224,18 @@ bool
 GuidedMeshIO
 ::IsFilePolyData(const char *filename)
 {
-  auto reader = vtkNew<vtkDataReader>();
-  reader->SetFileName(filename);
-  return reader->IsFilePolyData();
+  auto fmt = GetFormatByFilename(filename);
+  if (fmt == FORMAT_COUNT)
+    return false;
+
+  AbstractMeshIODelegate *ioDelegate = AbstractMeshIODelegate::GetDelegate(fmt);
+
+  if (!ioDelegate)
+    return false;
+
+  bool ret = ioDelegate->IsFilePolyData(filename);
+  delete ioDelegate;
+  return ret;
 }
 
 GuidedMeshIO::FileFormat

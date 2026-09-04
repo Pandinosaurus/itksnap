@@ -12,31 +12,37 @@ class PaintbrushSettingsModel : public AbstractModel
 public:
   irisITKObjectMacro(PaintbrushSettingsModel, AbstractModel)
 
-  typedef AbstractPropertyModel<PaintbrushMode> AbstractPaintbrushModeModel;
-  typedef ConcretePropertyModel<PaintbrushMode> ConcretePaintbrushModeModel;
+  typedef AbstractPropertyModel<PaintbrushShape> AbstractPaintbrushShapeModel;
+  typedef AbstractPropertyModel<PaintbrushSmartMode> AbstractPaintbrushSmartModeModel;
 
   enum UIState {
     UIF_VOLUMETRIC_OK,
-    UIF_ADAPTIVE_OK
+    UIF_ADAPTIVE_OK,
+    UIF_DEEPLEARNING_OK
   };
 
   irisGetMacro(ParentModel, GlobalUIModel *)
   void SetParentModel(GlobalUIModel *parent);
 
-  virtual void OnUpdate() ITK_OVERRIDE;
+  virtual void OnUpdate() override;
 
   bool CheckState(PaintbrushSettingsModel::UIState state);
 
-  irisGetMacro(PaintbrushModeModel, AbstractPaintbrushModeModel *)
+  irisGenericPropertyAccessMacro(PaintbrushShape, PaintbrushShape, TrivialDomain)
+  irisGenericPropertyAccessMacro(PaintbrushSmartMode, PaintbrushSmartMode, TrivialDomain)
 
-  irisGetMacro(BrushSizeModel, AbstractRangedIntProperty *)
-  irisGetMacro(VolumetricBrushModel, AbstractSimpleBooleanProperty *)
-  irisGetMacro(IsotropicBrushModel, AbstractSimpleBooleanProperty *)
-  irisGetMacro(ChaseCursorModel, AbstractSimpleBooleanProperty *)
+  irisRangedPropertyAccessMacro(BrushSize, int)
+  irisSimplePropertyAccessMacro(VolumetricBrush, bool)
+  irisSimplePropertyAccessMacro(IsotropicBrush, bool)
+  irisSimplePropertyAccessMacro(ChaseCursor, bool)
 
-  irisGetMacro(AdaptiveModeModel, AbstractSimpleBooleanProperty *)
-  irisGetMacro(ThresholdLevelModel, AbstractRangedDoubleProperty *)
-  irisGetMacro(SmoothingIterationsModel, AbstractRangedIntProperty *)
+  irisReadOnlySimplePropertyAccessMacro(AdaptiveMode, bool)
+  irisReadOnlySimplePropertyAccessMacro(DeepLearningMode, bool)
+  irisRangedPropertyAccessMacro(ThresholdLevel, double)
+  irisRangedPropertyAccessMacro(SmoothingIterations, int)
+
+  using DeepLearningPipelineDomain = SimpleItemSetDomain<std::string, std::string>;
+  irisGenericPropertyAccessMacro(DeepLearningPipeline, std::string, DeepLearningPipelineDomain);
 
 protected:
 
@@ -51,10 +57,14 @@ protected:
   PaintbrushSettings GetPaintbrushSettings();
   void SetPaintbrushSettings(PaintbrushSettings ps);
 
-  SmartPtr<AbstractPaintbrushModeModel> m_PaintbrushModeModel;
+  SmartPtr<AbstractPaintbrushShapeModel> m_PaintbrushShapeModel;  
   SmartPtr<AbstractSimpleBooleanProperty> m_VolumetricBrushModel;
   SmartPtr<AbstractSimpleBooleanProperty> m_IsotropicBrushModel;
   SmartPtr<AbstractSimpleBooleanProperty> m_ChaseCursorModel;
+
+  SmartPtr<AbstractPaintbrushSmartModeModel> m_PaintbrushSmartModeModel;
+  bool GetPaintbrushSmartModeValue(PaintbrushSmartMode &value);
+  void SetPaintbrushSmartModeValue(PaintbrushSmartMode value);
 
   SmartPtr<AbstractRangedIntProperty> m_BrushSizeModel;
   bool GetBrushSizeValueAndRange(int &value, NumericValueRange<int> *domain);
@@ -62,6 +72,13 @@ protected:
 
   SmartPtr<AbstractSimpleBooleanProperty> m_AdaptiveModeModel;
   bool GetAdaptiveModeValue(bool &value);
+
+  SmartPtr<AbstractSimpleBooleanProperty> m_DeepLearningModeModel;
+  bool GetDeepLearningModeValue(bool &value);
+
+  SmartPtr<AbstractPropertyModel<std::string, DeepLearningPipelineDomain>> m_DeepLearningPipelineModel;
+  bool GetDeepLearningPipelineValueAndRange(std::string &value, DeepLearningPipelineDomain *range);
+  void SetDeepLearningPipelineValue(std::string value);
 
   SmartPtr<AbstractRangedDoubleProperty> m_ThresholdLevelModel;
   bool GetThresholdLevelValueAndRange(double &value, NumericValueRange<double> *domain);

@@ -18,14 +18,15 @@ GetVertices(ImageWrapperBase *layer, DeformationGridVertices &v) const
   typedef ImageWrapperBase::FloatVectorSliceType SliceType;
 
   // Draw the texture for the layer
-  if (layer && (layer->GetNumberOfComponents() == 3 || layer->GetNumberOfComponents() == 2))
+  int nc = layer->GetNumberOfComponents();
+  if (layer && (nc == 3 || (nc == 2 && m_Parent->GetReferenceSpaceSize()[0] > 1 && m_Parent->GetReferenceSpaceSize()[1] > 1 )))
     {
     // Create a pipeline that casts the slice to a floating point vector image
     // TODO: this involves new memory allocation in each call, in the future we might
     // want to create this pipeline when deformation grid visualization is enabled
     // and delete it when it is disabled
     SliceType *slice = layer->CreateCastToFloatVectorSlicePipeline(
-          "DeformationGridModelCastToFloat",m_Parent->GetId());
+      "DeformationGridModelCastToFloat", DisplaySliceIndex(m_Parent->GetId(), DISPLAY_SLICE_MAIN));
 
     // Get the slice
     slice->GetSource()->UpdateLargestPossibleRegion();
@@ -75,7 +76,7 @@ GetVertices(ImageWrapperBase *layer, DeformationGridVertices &v) const
         // Figure out how frequently to sample lines. The spacing on the screen should be at
         // most every 4 pixels. Zoom is in units of px/mm. Spacing is in units of mm/vox, so
         // zoom * spacing is (display pixels) / (image voxels).
-        double disp_pix_per_vox = m_Parent->GetSliceSpacing()[d] * m_Parent->GetViewZoom();
+        double disp_pix_per_vox = m_Parent->GetReferenceSpaceSpacing()[d] * m_Parent->GetViewZoom();
         vox_increment = (int) ceil(8.0 / disp_pix_per_vox);
         }
       else

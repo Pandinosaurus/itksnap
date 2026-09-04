@@ -4,18 +4,36 @@
 #include "SNAPCommon.h"
 #include "GuidedMeshIO.h"
 #include "itkObject.h"
-#include "itkObjectFactory.h"
 #include "vtkSmartPointer.h"
 #include "ImageWrapperBase.h"
 #include "MeshDataArrayProperty.h"
-#include "ColorMap.h"
-#include "ThreadedHistogramImageFilter.h"
 #include "vtkPolyData.h"
 
 class AbstractMeshIODelegate;
 class MeshDisplayMappingPolicy;
 class MeshAssembly;
 class vtkDataSetAttributes;
+class vtkPlaneCutter;
+class vtkPlane;
+class vtkStripper;
+class vtkCleanPolyData;
+class vtkDataArraySelection;
+class vtkPassSelectedArrays;
+namespace itk {
+template <unsigned int VDim> class ImageBase;
+}
+
+class PlaneCutterAssembly : public itk::Object
+{
+public:
+  irisITKObjectMacro(PlaneCutterAssembly, itk::Object);
+  friend class PolyDataWrapper;
+protected:
+  vtkSmartPointer<vtkPassSelectedArrays> m_PassSelected;
+  vtkSmartPointer<vtkPlaneCutter> m_Cutter;
+  vtkSmartPointer<vtkPlane> m_Plane;
+  vtkSmartPointer<vtkCleanPolyData> m_Cleaner;
+};
 
 /**
  * @brief The PolyDataWrapper class
@@ -26,6 +44,7 @@ public:
   irisITKObjectMacro(PolyDataWrapper, itk::Object);
 
   typedef GuidedMeshIO::FileFormat FileFormat;
+  typedef itk::ImageBase<3> DisplayViewportGeometryType;
 
   // comparisonn functor for map with char* key
   struct strcmp
@@ -64,6 +83,14 @@ public:
   void SetFileFormat(FileFormat fmt)
   { m_FileFormat = fmt; }
 
+  /**
+   * Compute intersection between this mesh layer and one of the slicing planes
+   */
+  vtkPolyData *GetIntersectionWithSlicePlane(DisplaySliceIndex                  index,
+                                             const DisplayViewportGeometryType *geometry,
+                                             vtkDataArraySelection *point_data_selection,
+                                             vtkDataArraySelection *cell_data_selection);
+
   friend class MeshDataArrayProperty;
 protected:
   PolyDataWrapper() {}
@@ -85,6 +112,9 @@ protected:
 
   // Cell Data Properties
   MeshDataArrayPropertyMap m_CellDataProperties;
+
+  // Cutters used to display 2D intersections of the mesh with display slices
+  DisplaySlicePipelineArray<PlaneCutterAssembly> m_PlaneCut;
 
   // Filename (default to empty string)
   // Polydata generated from segmentation don't have a file name
@@ -134,7 +164,7 @@ public:
   { return m_Meshes.size(); }
 
   // Compute combined bounds as double array
-  void GetCombinedBounds(double bounds[6]) const;
+  bool GetCombinedBounds(double bounds[6]) const;
 
   // Compute combined bounds as array string
   std::string GetCombinedBoundsString() const;
@@ -192,41 +222,14 @@ public:
 
   typedef GuidedMeshIO::FileFormat FileFormat;
 
+  typedef itk::ImageBase<3> DisplayViewportGeometryType;
+
   //----------------------------------------------
   // Begin virtual methods definition
 
-  /** Access the filename */
-  irisGetStringMacroWithOverride(FileName)
-  virtual void SetFileName(const std::string &name) override;
+  /** Expose the single-arg overload from WrapperBase alongside the mesh-specific one */
+  using WrapperBase::SetFileName;
   virtual void SetFileName(const char *filename, unsigned int tp, LabelType id);
-
-  /**
-   * Access the nickname - which may be a custom nickname or derived from the
-   * filename if there is no custom nickname
-   */
-  virtual const std::string &GetNickname() const override;
-
-  // Set the custom nickname - precedence over the filename
-  virtual void SetCustomNickname(const std::string &nickname) override;
-  irisGetMacroWithOverride(CustomNickname, const std::string &);
-
-  /** Fallback nickname - shown if no filename and no custom nickname set. */
-  irisGetSetMacroWithOverride(DefaultNickname, const std::string &)
-
-  /** List of tags assigned to the image layer */
-  const TagList &GetTags() const override
-  { return m_Tags; }
-  void SetTags (const TagList &tags) override
-  { m_Tags = tags; }
-
-  /** Layer transparency */
-  irisSetWithEventMacroWithOverride(Alpha, double, WrapperDisplayMappingChangeEvent)
-  irisGetMacroWithOverride(Alpha, double)
-
-  /**
-   * Is the image initialized?
-   */
-  irisIsMacroWithOverride(Initialized)
 
   /** Get the MeshAssembly associated with the time point */
   virtual MeshAssembly *GetMeshAssembly(unsigned int timepoint);
@@ -258,7 +261,7 @@ public:
     earliercode that separately computed the image or mesh min/max and histogram using
     separate filters and required the number of histogram bins to be specified explicitly.
 
-    t-digest code: https://github.com/SpirentOrion/digestible
+    t-digest code: https://github.com/apache/datasketches-cpp
     t-digest paper: https://www.sciencedirect.com/science/article/pii/S2665963820300403
     */
   virtual TDigestDataObject *GetTDigest() override;
@@ -270,18 +273,31 @@ public:
    *  Build the layer from registry
    */
   virtual void LoadFromRegistry(Registry &folder, std::string &orig_dir,
-                                std::string &crnt_dir, unsigned int nT);
+                                std::string &crnt_dir, unsigned int nT,
+                                const RemoteIOContext &ctx = RemoteIOContext());
 
   // End of virtual methods definition
   //------------------------------------------------
 
   /** Get the active data array property */
-  SmartPtr<MeshLayerDataArrayProperty> GetActiveDataArrayProperty();
+  SmartPtr<MeshLayerDataArrayProperty> GetActiveDataArrayProperty() const;
 
   /** Set data array with the id as active mesh data attribute */
   void SetActiveMeshLayerDataPropertyId (int id);
   int GetActiveMeshLayerDataPropertyId()
   { return m_ActiveDataPropertyId; }
+
+  /** Set the solid color to use for this mesh when no property is selected */
+  void SetSolidColor(Vector3d color);
+
+  /** Get the solid color to use for this mesh when no property is selected */
+  Vector3d GetSolidColor() const;
+
+  /** Set the solid color to use for this mesh when no property is selected */
+  void SetSliceViewOpacity(double alpha);
+
+  /** Get the solid color to use for this mesh when no property is selected */
+  double GetSliceViewOpacity() const;
 
   /** Get mesh layer data property map */
   MeshLayerCombinedPropertyMap &GetCombinedDataProperty()
@@ -289,6 +305,12 @@ public:
 
   /** Get mesh for a timepoint and id */
   PolyDataWrapper *GetMesh(unsigned int timepoint, LabelType id);
+
+  /** Compute intersection between a mesh and a slice plane */
+  vtkPolyData *GetIntersectionWithSlicePlane(unsigned int      timepoint,
+                                             LabelType         id,
+                                             DisplaySliceIndex index,
+                                             bool              only_pass_active_property);
 
   /**
     Helper method to merge two data property map
@@ -311,6 +333,26 @@ public:
   /** Return the number of polydata currently exist in a timepoint */
   size_t GetNumberOfMeshes(unsigned int timepoint);
 
+  /**
+   * Get the display viewport geometries for this mesh layer
+   */
+  virtual const DisplayViewportGeometryType *GetDisplayViewportGeometry(DisplaySliceIndex index) const
+  {
+    return m_DisplayViewportGeometry[index];
+  }
+
+  /**
+   * Set the display viewport geometries for this mesh layer
+   */
+  virtual void SetDisplayViewportGeometry(DisplaySliceIndex                  index,
+                                          const DisplayViewportGeometryType *viewport_image)
+  {
+    m_DisplayViewportGeometry[index] = viewport_image;
+  }
+
+  /** Get the latest modified time from this object and objects that it holds */
+  virtual itk::ModifiedTimeType GetDeepMTime() const;
+
   // Give display mapping policy access to protected members for flexible
   // configuration and data retrieval
   friend class MeshDisplayMappingPolicy;
@@ -332,26 +374,11 @@ protected:
   // Indicate which data property is active
   int m_ActiveDataPropertyId = -1;
 
-  UserDataMapType m_UserDataMap;
+  // Solid color
+  Vector3d m_SolidColor;
 
-  // Each layer has a filename, from which it is belived to have come
-  std::string m_FileName, m_FileNameShort;
-
-  // Each layer has a nickname. But this gets complicated, because the nickname
-  // can be set by the user, or it can be default for the wrapper, or it can be
-  // derived from the filename. The nicknames are used in the following order.
-  // - if there is a custom nickname, it is shown
-  // - if there is a filename, nickname is set to the shortened filename
-  // - if there is no filename, nickname is set to the default nickname
-  std::string m_DefaultNickname, m_CustomNickname;
-
-  // Tags for this image layer
-  TagList m_Tags;
-
-  bool m_Initialized = false;
-
-  // Transparency
-  double m_Alpha;
+  // Opacity for display on slice views
+  double m_SliceViewOpacity = 1.0;
 
   // Data Array Property Id
   int m_CombinedPropID = 0;
@@ -361,6 +388,9 @@ protected:
 
 	// Data property observer tag
 	unsigned long m_ActiveMeshDataPropertyObserverTag;
+
+  // Display geometry for slicing
+  DisplaySlicePipelineArray<DisplayViewportGeometryType, const DisplayViewportGeometryType *> m_DisplayViewportGeometry;
 };
 
 #endif // MESHWRAPPERBASE_H

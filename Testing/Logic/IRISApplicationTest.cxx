@@ -31,6 +31,11 @@ public:
     return std::string(".itksnap.test");
     }
 
+  virtual std::string GetTempDirectory()
+    {
+    return std::string("/tmp");
+    }
+
   virtual std::string EncodeServerURL(const std::string &url)
     {
     return url;
@@ -49,10 +54,24 @@ protected:
   std::string m_ExecutableName;
 };
 
+class DummyColorMapPresetNameSource : public AbstractColorMapPresetNameSource
+{
+public:
+  virtual std::string GetPresetName(ColorMap::SystemPreset preset, bool translated) override
+  {
+    std::string label = "Color Map " + std::to_string(static_cast<int>(preset));
+    return label;
+  }
+};
+
+
 int main(int argc, char *argv[])
 {
   DummySystemInfoDelegate sidel(argv[0]);
   SystemInterface::SetSystemInfoDelegate(&sidel);
+
+  DummyColorMapPresetNameSource color_map_source;
+  ColorMap::SetColorMapPresetNameSource(&color_map_source);
 
   IRISApplication::Pointer app = IRISApplication::New();
 }

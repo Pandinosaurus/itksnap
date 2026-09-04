@@ -1,15 +1,26 @@
 #include "PaintbrushToolPanel.h"
+#include "DeepLearningSegmentationModel.h"
 #include "ui_PaintbrushToolPanel.h"
 
 #include "PaintbrushSettingsModel.h"
+#include "MainImageWindow.h"
+#include "SNAPQtCommon.h"
+#include "PreferencesDialog.h"
 #include "QtRadioButtonCoupling.h"
 #include "QtCheckBoxCoupling.h"
+#include "QtComboBoxCoupling.h"
 #include "QtDoubleSpinBoxCoupling.h"
 #include "QtSpinBoxCoupling.h"
 #include "QtSliderCoupling.h"
+#include "DeepLearningInfoDialog.h"
+#include "DeepLearningSegmentationModel.h"
+#include "GlobalUIModel.h"
+#include "DeepLearningConnectionStatusCouplingTraits.h"
+
+#include "QtProgressDelegate.h"
 
 PaintbrushToolPanel::PaintbrushToolPanel(QWidget *parent) :
-  QWidget(parent),
+  SNAPComponent(parent),
   ui(new Ui::PaintbrushToolPanel)
 {
   ui->setupUi(this);
@@ -33,6 +44,11 @@ PaintbrushToolPanel::PaintbrushToolPanel(QWidget *parent) :
   ui->actionSmoothnessDecrease->setShortcuts(
         ui->actionSmoothnessDecrease->shortcuts() << QKeySequence(Qt::ALT | Qt::Key_Underscore) << QKeySequence(Qt::ALT | Qt::Key_Minus));
 
+  // Set up the info dialog
+  m_DLInfoDialog = new DeepLearningInfoDialog(this);
+  m_DLInfoDialog->setModal(true);
+  QObject::connect(m_DLInfoDialog, &QDialog::finished,
+                   this, &PaintbrushToolPanel::onDLInfoDialogFinished);
 
   addAction(ui->actionBrushIncrease);
   addAction(ui->actionBrushDecrease);
@@ -53,12 +69,17 @@ void PaintbrushToolPanel::SetModel(PaintbrushSettingsModel *model)
   m_Model = model;
 
   // Couple the radio buttons
-  std::map<PaintbrushMode, QAbstractButton *> rmap;
-  rmap[PAINTBRUSH_RECTANGULAR] = ui->btnSquare;
-  rmap[PAINTBRUSH_ROUND] = ui->btnRound;
-  rmap[PAINTBRUSH_WATERSHED] = ui->btnWatershed;
-  makeRadioGroupCoupling(ui->grpBrushStyle, rmap,
-                         m_Model->GetPaintbrushModeModel());
+  std::map<PaintbrushShape, QAbstractButton *> rmap_shape{ { PAINTBRUSH_RECTANGULAR, ui->btnSquare },
+                                                           { PAINTBRUSH_ROUND, ui->btnRound } };
+  makeRadioGroupCoupling(ui->grpBrushShape, rmap_shape, m_Model->GetPaintbrushShapeModel());
+
+  std::map<PaintbrushSmartMode, QAbstractButton *> rmap_smart_mode {
+    { PAINTBRUSH_MANUAL, ui->btnManual },
+    { PAINTBRUSH_WATERSHED, ui->btnWatershed },
+    { PAINTBRUSH_DLS, ui->btnDeepLearning }
+  };
+
+  makeRadioGroupCoupling(ui->grpBrushMode, rmap_smart_mode, m_Model->GetPaintbrushSmartModeModel());
 
   // Couple the other controls
   makeCoupling(ui->chkVolumetric, model->GetVolumetricBrushModel());
@@ -70,6 +91,7 @@ void PaintbrushToolPanel::SetModel(PaintbrushSettingsModel *model)
 
   // Couple the visibility of the adaptive widget
   makeWidgetVisibilityCoupling(ui->grpAdaptive, model->GetAdaptiveModeModel());
+  makeWidgetVisibilityCoupling(ui->grpDeepLearning, model->GetDeepLearningModeModel());
 
   makeCoupling(ui->inGranularity, model->GetThresholdLevelModel());
   makeCoupling(ui->inSmoothness, model->GetSmoothingIterationsModel());
@@ -80,6 +102,40 @@ void PaintbrushToolPanel::SetModel(PaintbrushSettingsModel *model)
   activateOnFlag(ui->btnWatershed, m_Model,
                  PaintbrushSettingsModel::UIF_ADAPTIVE_OK);
 
+  // Listen to changes in smart mode, to display a popup
+  connectITK(m_Model->GetPaintbrushSmartModeModel(), ValueChangedEvent());
+
+  // Connect with the deep learning model
+  auto *dls = m_Model->GetParentModel()->GetDeepLearningSegmentationModel();
+  makeCoupling(ui->outDLStatus, dls->GetServerStatusModel(), MiniConnectionStatusQLabelValueTraits());
+
+  // The listing of DL models should be deactivated when there are no available models
+  QtCouplingOptions opts_dl(QtCouplingOptions::DEACTIVATE_WHEN_INVALID);
+  makeCoupling(ui->inDLPipeline, model->GetDeepLearningPipelineModel(), opts_dl);
+
+  MainImageWindow *winmain = findParentWidget<MainImageWindow>(this);
+
+  auto *del = new QtProgressDelegate(winmain->GetProgressWidget(), winmain);
+  dls->SetProgressDelegate(del);
+}
+
+void
+PaintbrushToolPanel::onModelUpdate(const EventBucket &bucket)
+{
+  if(bucket.HasEvent(ValueChangedEvent(), m_Model->GetPaintbrushSmartModeModel()))
+  {
+    if(m_Model->GetPaintbrushSmartModeModel()->GetValue() == PAINTBRUSH_DLS)
+    {
+      // Optionally, show the information dialog
+      auto *dlm = m_Model->GetParentModel()->GetDeepLearningSegmentationModel();
+      auto *ds = m_Model->GetParentModel()->GetGlobalDisplaySettings();
+      if (dlm->GetServerStatus().status != dls_model::CONN_CONNECTED &&
+          ds->GetFlagRemindDeepLearningExtensions())
+      {
+        m_DLInfoDialog->open();
+      }
+    }
+  }
 }
 
 void PaintbrushToolPanel::on_actionBrushStyle_triggered()
@@ -90,4 +146,26 @@ void PaintbrushToolPanel::on_actionBrushStyle_triggered()
     ui->btnWatershed->setChecked(true);
   else if(ui->btnWatershed->isChecked())
     ui->btnSquare->setChecked(true);
+}
+
+void
+PaintbrushToolPanel::on_btnConfigDL_clicked()
+{
+  MainImageWindow *winmain = findParentWidget<MainImageWindow>(this);
+  winmain->GetPreferencesDialog()->ShowDialog();
+  winmain->GetPreferencesDialog()->GoToPage(PreferencesDialog::DeepLearningServer);
+}
+
+void
+PaintbrushToolPanel::onDLInfoDialogFinished(int result)
+{
+  if(result == QDialog::Accepted)
+    on_btnConfigDL_clicked();
+  if(m_DLInfoDialog->isDoNotShowAgainChecked())
+  {
+    m_Model->GetParentModel()
+      ->GetGlobalDisplaySettings()
+      ->GetFlagRemindDeepLearningExtensionsModel()
+      ->SetValue(false);
+  }
 }

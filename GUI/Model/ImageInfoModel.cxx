@@ -127,8 +127,8 @@ bool ImageInfoModel
 
   if(!l) return false;
 
-  Vector3ui cursor = m_ParentModel->GetDriver()->GetCursorPosition();
-  Vector3d x = l->TransformVoxelIndexToLPSCoordinates(to_int(cursor));
+  Vector3i cursor = m_ParentModel->GetDriver()->GetCursorPosition();
+  Vector3d x = l->TransformVoxelIndexToLPSCoordinates(cursor);
 
   for(unsigned int i = 0; i < 3; i++)
     value[i] = x[i];
@@ -144,7 +144,7 @@ bool ImageInfoModel
 
   if(!l) return false;
 
-  Vector3ui cursor = m_ParentModel->GetDriver()->GetCursorPosition();
+  Vector3i cursor = m_ParentModel->GetDriver()->GetCursorPosition();
   Vector3d x = l->TransformVoxelCIndexToNIFTICoordinates(to_double(cursor));
 
   for(unsigned int i = 0; i < 3; i++)
@@ -168,7 +168,7 @@ bool ImageInfoModel::GetImageVoxelCoordinatesOblique(Vector3d &value)
 
   // Set everything
   for(unsigned int d = 0; d < 3; d++)
-    value[d] = x_img[d];
+    value[d] = x_img[d] + 1.0; // 1-based index to be consistent with cursor position display
 
   return true;
 }
@@ -256,7 +256,7 @@ ImageInfoModel
   if(!l) return false;
 
 
-  value = l->GetTimePointIndex() + 1;
+  value = l->GetTimePointIndex() + 1; // dipslayTP = storageTP + 1
   if(range)
     range->Set(1, l->GetNumberOfTimePoints(), 1);
   return true;
@@ -272,7 +272,7 @@ void ImageInfoModel::SetCurrentTimePointValue(unsigned int value)
   // TODO: make this an assertion
   if(main && layer && main->GetNumberOfTimePoints() == layer->GetNumberOfTimePoints())
     {
-    this->GetParentModel()->GetDriver()->SetCursorTimePoint(value);
+    this->GetParentModel()->GetDriver()->SetCursorTimePoint(value - 1); // storageTP = displayTP - 1
     }
 }
 

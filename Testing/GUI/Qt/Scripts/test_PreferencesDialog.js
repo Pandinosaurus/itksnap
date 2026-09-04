@@ -2,25 +2,38 @@
 include("Library");
 
 // Show the preferences dialog
-engine.findChild(mainwin,"actionPreferences").trigger();
+engine.trigger("actionPreferences");
 
 // Get Preferences Dialog
 var prefDialog = engine.findChild(mainwin, "PreferencesDialog");
+engine.invoke(prefDialog, "set_page_to_slice_views_layout")
 
 // Toggle the radio buttons
 // -- make sure the icon switch does not crash the program
 var btnASC = engine.findChild(prefDialog, "btnASC");
 var btnSAC = engine.findChild(prefDialog, "btnSAC");
-btnASC.toggle();
-btnSAC.toggle();
+
+//=== Toggle ASC
+engine.toggle(btnASC);
+
+//=== Toggle SAC
+engine.toggle(btnSAC);
+
 var btnAP = engine.findChild(prefDialog, "radio_sagittal_ap");
 var btnPA = engine.findChild(prefDialog, "radio_sagittal_pa");
 var btnRL = engine.findChild(prefDialog, "radio_axial_rl");
 var btnLR = engine.findChild(prefDialog, "radio_axial_lr");
-btnAP.toggle();
-btnPA.toggle();
-btnRL.toggle();
-btnLR.toggle();
 
+//=== Toggle AP
+engine.toggle(btnAP);
+
+//=== Toggle PA
+engine.toggle(btnPA);
+
+//=== Toggle RL
+engine.toggle(btnRL);
+
+//=== Toggle LR
+engine.toggle(btnLR);
 
 

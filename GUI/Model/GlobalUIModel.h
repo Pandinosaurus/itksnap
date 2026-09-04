@@ -79,6 +79,7 @@ class RegistrationModel;
 class DistributedSegmentationModel;
 class SmoothLabelsModel;
 class VoxelChangeReportModel;
+class DeepLearningSegmentationModel;
 
 namespace itk
 {
@@ -256,6 +257,9 @@ public:
   /** Model for distributed image segmentation */
   irisGetMacro(DistributedSegmentationModel, DistributedSegmentationModel *)
 
+  /** Model for external deep learning segmentation */
+  irisGetMacro(DeepLearningSegmentationModel, DeepLearningSegmentationModel *)
+
   // issue #24
   /** Model for label smoothing dialog */
   irisGetMacro(SmoothLabelsModel, SmoothLabelsModel *)
@@ -271,7 +275,7 @@ public:
   bool CheckState(UIState state);
 
   /** Get the model for the cursor coordinates */
-  irisGetMacro(CursorPositionModel, AbstractRangedUIntVec3Property *)
+  irisGetMacro(CursorPositionModel, AbstractRangedIntVec3Property *)
 
   /** Get the model for 4D image time point */
   irisGetMacro(CursorTimePointModel, AbstractRangedUIntProperty *)
@@ -457,6 +461,9 @@ protected:
   // Model for DSS
   SmartPtr<DistributedSegmentationModel> m_DistributedSegmentationModel;
 
+         // Model for DSS
+  SmartPtr<DeepLearningSegmentationModel> m_DeepLearningSegmentationModel;
+
   // Issue #24: Model for Label Smoothing
   SmartPtr<SmoothLabelsModel> m_SmoothLabelsModel;
 
@@ -464,10 +471,9 @@ protected:
   SmartPtr<VoxelChangeReportModel> m_VoxelChangeReportModel;
 
   // Current coordinates of the cursor
-  SmartPtr<AbstractRangedUIntVec3Property> m_CursorPositionModel;
-  bool GetCursorPositionValueAndRange(
-      Vector3ui &value, NumericValueRange<Vector3ui> *range);
-  void SetCursorPosition(Vector3ui value);
+  SmartPtr<AbstractRangedIntVec3Property> m_CursorPositionModel;
+  bool GetCursorPositionValueAndRange(Vector3i &value, NumericValueRange<Vector3i> *range);
+  void SetCursorPosition(Vector3i value);
 
   // Current time point of the cursor
   SmartPtr<AbstractRangedUIntProperty> m_CursorTimePointModel;

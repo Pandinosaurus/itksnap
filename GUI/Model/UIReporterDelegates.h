@@ -56,6 +56,9 @@ public:
   /** Set the progress value between 0 and 1 */
   virtual void SetProgressValue(double) = 0;
 
+  virtual void Show(const char *title = nullptr) = 0;
+  virtual void Hide() = 0;
+
   /** For convenience, the delegate can be hooked up to an ITK command */
   void ProgressCallback(itk::Object *source, const itk::EventObject &event);
 
@@ -76,6 +79,7 @@ public:
   virtual std::string GetApplicationFile() = 0;
   virtual std::string GetApplicationPermanentDataLocation() = 0;
   virtual std::string GetUserDocumentsLocation() = 0;
+  virtual std::string GetTempDirectory() = 0;
 
   virtual std::string EncodeServerURL(const std::string &url) = 0;
 

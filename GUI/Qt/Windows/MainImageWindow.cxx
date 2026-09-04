@@ -23,9 +23,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 =========================================================================*/
-#include "MeshOptions.h"
-
 #include "MainImageWindow.h"
+#include "ProgressReportWidget.h"
+#include "ProgressReportDialog.h"
+#include "QtProgressDelegate.h"
+#include "QtSSHAuthDelegate.h"
 #include "ui_MainImageWindow.h"
 
 #include "MainControlPanel.h"
@@ -45,9 +47,7 @@
 #include "SliceWindowCoordinator.h"
 #include "HistoryQListModel.h"
 #include "GenericView3D.h"
-#include "GenericSliceView.h"
 #include "SplashPanel.h"
-#include "QtWidgetCoupling.h"
 #include "SimpleFileDialogWithHistory.h"
 #include "StatisticsDialog.h"
 #include "MeshExportWizard.h"
@@ -79,6 +79,7 @@
 #include <SmoothLabelsDialog.h>
 #include "RegistrationDialog.h"
 #include "DistributedSegmentationDialog.h"
+#include "ImageIORemote.h"
 
 #include <QAbstractListModel>
 #include <QItemDelegate>
@@ -95,6 +96,10 @@
 #include <QShortcut>
 #include <QScreen>
 #include <QTextStream>
+#include <QProcess>
+#ifdef Q_OS_WIN
+#  include <windows.h>
+#endif
 
 QString read_tooltip_qt(const QString &filename)
 {
@@ -132,11 +137,11 @@ public:
     switch(action)
       {
       case ModeTooltipBuilder::LMB:
-        atext = "left_click"; break;
+        atext = QCoreApplication::translate("MainImageWindow", "left_click"); break;
       case ModeTooltipBuilder::RMB:
-        atext = "right_click"; break;
+        atext = QCoreApplication::translate("MainImageWindow", "right_click"); break;
       case ModeTooltipBuilder::SCROLL:
-        atext = "scrolling"; break;
+        atext = QCoreApplication::translate("MainImageWindow", "scrolling"); break;
       }
 
     QString fullrow = row.arg(atext).arg(descr).arg(modifier);
@@ -233,7 +238,7 @@ MainImageWindow::MainImageWindow(QWidget *parent) :
   m_DockLeft->setFeatures(
         QDockWidget::DockWidgetFloatable |
         QDockWidget::DockWidgetMovable);
-  m_DockLeft->setWindowTitle("ITK-SNAP Toolbox");
+  m_DockLeft->setWindowTitle(tr("ITK-SNAP Toolbox"));
   // m_DockLeft->setTitleBarWidget(new QWidget());
   this->addDockWidget(Qt::LeftDockWidgetArea, m_DockLeft);
 
@@ -245,7 +250,7 @@ MainImageWindow::MainImageWindow(QWidget *parent) :
           ui->actionMainControlPanel, SLOT(setChecked(bool)));
 
   // Set up the right hand side dock widget
-  m_DockRight = new QDockWidget("Segment 3D", this);
+  m_DockRight = new QDockWidget(tr("Segment 3D"), this);
 
   m_DockRight->setAllowedAreas(Qt::RightDockWidgetArea);
   m_DockRight->setFeatures(
@@ -320,13 +325,16 @@ MainImageWindow::MainImageWindow(QWidget *parent) :
   // Set up the progress dialog
   m_Progress = new QProgressDialog(this);
 
+  // Set up the advanced progress reporter
+  m_ProgressFader = new ProgressReportWidget(this);
+
   // Create the delegate to pass in to the model
   m_ProgressReporterDelegate = new QtProgressReporterDelegate();
   m_ProgressReporterDelegate->SetProgressDialog(m_Progress);
   m_Progress->reset();
 
   // Set title
-  this->setWindowTitle("ITK-SNAP");
+  this->setWindowTitle(tr("ITK-SNAP"));
 
   // We accept drop events
   setAcceptDrops(true);
@@ -371,61 +379,72 @@ MainImageWindow::MainImageWindow(QWidget *parent) :
   const QString mod_shift(QChar(0x21e7));
 
   // Generate tooltips for the complex actions
-  ModeTooltipBuilder ttCrosshair("Crosshair Mode (1)",
-                                 "Used to position the 3D cursor in the three orthogonal image slices.");
-  ttCrosshair.addMouseAction(ModeTooltipBuilder::LMB, "<b>Place and move the 3D cursor</b>");
-  ttCrosshair.addMouseAction(ModeTooltipBuilder::RMB, "Zoom in and out (hold & drag)");
-  ttCrosshair.addMouseAction(ModeTooltipBuilder::LMB, "Pan (hold & drag)",mod_option);
-  ttCrosshair.addMouseAction(ModeTooltipBuilder::SCROLL, "Go to next/previous image slice");
-  ttCrosshair.addMouseAction(ModeTooltipBuilder::SCROLL, "Go to next/previous image component",mod_shift);
+  ModeTooltipBuilder ttCrosshair(
+    tr("Crosshair Mode (1)"),
+    tr("Used to position the 3D cursor in the three orthogonal image slices."));
+  ttCrosshair.addMouseAction(ModeTooltipBuilder::LMB, tr("<b>Place and move the 3D cursor</b>"));
+  ttCrosshair.addMouseAction(ModeTooltipBuilder::RMB, tr("Zoom in and out (hold & drag)"));
+  ttCrosshair.addMouseAction(ModeTooltipBuilder::LMB, tr("Pan (hold & drag)"), mod_option);
+  ttCrosshair.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Go to next/previous image slice"));
+  ttCrosshair.addMouseAction(
+    ModeTooltipBuilder::SCROLL, tr("Go to next/previous image component"), mod_shift);
   ui->actionCrosshair->setToolTip(ttCrosshair.makeTooltip());
 
-  ModeTooltipBuilder ttZoom("Zoom/Pan Mode (2)",
-                            "Used to zoom into the image and to pan around when zoomed in.");
-  ttZoom.addMouseAction(ModeTooltipBuilder::LMB, "<b>Pan (hold & drag)</b>");
-  ttZoom.addMouseAction(ModeTooltipBuilder::RMB, "<b>Zoom in and out (hold & drag)</b>");
-  ttZoom.addMouseAction(ModeTooltipBuilder::LMB, "Place and move the 3D cursor", mod_option);
-  ttZoom.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image slices");
-  ttZoom.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image components",mod_shift);
+  ModeTooltipBuilder ttZoom(tr("Zoom/Pan Mode (2)"),
+                            tr("Used to zoom into the image and to pan around when zoomed in."));
+  ttZoom.addMouseAction(ModeTooltipBuilder::LMB, tr("<b>Pan (hold & drag)</b>"));
+  ttZoom.addMouseAction(ModeTooltipBuilder::RMB, tr("<b>Zoom in and out (hold & drag)</b>"));
+  ttZoom.addMouseAction(ModeTooltipBuilder::LMB, tr("Place and move the 3D cursor"), mod_option);
+  ttZoom.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image slices"));
+  ttZoom.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image components"), mod_shift);
   ui->actionZoomPan->setToolTip(ttZoom.makeTooltip());
 
-  ModeTooltipBuilder ttPolygon("Polygon Mode (3)",
-                               "Used to perform manual segmentation by drawing and filling polygons in the three orthogonal image slices.");
-  ttPolygon.addMouseAction(ModeTooltipBuilder::LMB, "<b>Add points to the polygon and edit the completed polygon</b>");
-  ttPolygon.addMouseAction(ModeTooltipBuilder::RMB, "Zoom in and out (hold & drag)");
-  ttPolygon.addMouseAction(ModeTooltipBuilder::LMB, "Place and move the 3D cursor",mod_option);
-  ttPolygon.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image slices");
-  ttPolygon.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image components",mod_shift);
+  ModeTooltipBuilder ttPolygon(
+    tr("Polygon Mode (3)"), tr("Used to perform manual segmentation by drawing and filling polygons in the three orthogonal image slices."));
+  ttPolygon.addMouseAction(ModeTooltipBuilder::LMB,
+                           tr("<b>Add points to the polygon and edit the completed polygon</b>"));
+  ttPolygon.addMouseAction(ModeTooltipBuilder::RMB, tr("Zoom in and out (hold & drag)"));
+  ttPolygon.addMouseAction(ModeTooltipBuilder::LMB, tr("Place and move the 3D cursor"), mod_option);
+  ttPolygon.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image slices"));
+  ttPolygon.addMouseAction(
+    ModeTooltipBuilder::SCROLL, tr("Scroll through image components"), mod_shift);
   ui->actionPolygon->setToolTip(ttPolygon.makeTooltip());
 
-  ModeTooltipBuilder ttPaintbrush("Paintbrush Mode (4)",
-                               "Used to perform manual segmentation by drawing with a paintbrush-like tool. "
-                               "Different brush shapes are available, including an adaptive brush that adjusts itself to the image data.");
-  ttPaintbrush.addMouseAction(ModeTooltipBuilder::LMB, "<b>Paint with the active label</b>");
-  ttPaintbrush.addMouseAction(ModeTooltipBuilder::RMB, "<b>Erase voxels painted with the active label</b>");
-  ttPaintbrush.addMouseAction(ModeTooltipBuilder::LMB, "Place and move the 3D cursor",mod_option);
-  ttPaintbrush.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image slices");
-  ttPaintbrush.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image components",mod_shift);
+  ModeTooltipBuilder ttPaintbrush(
+    tr("Paintbrush Mode (4)"),
+    tr("Used to perform manual segmentation by drawing with a paintbrush-like tool. "
+       "Different brush shapes are available, including an adaptive brush that adjusts itself to "
+       "the image data."));
+  ttPaintbrush.addMouseAction(ModeTooltipBuilder::LMB, tr("<b>Paint with the active label</b>"));
+  ttPaintbrush.addMouseAction(ModeTooltipBuilder::RMB,
+                              tr("<b>Erase voxels painted with the active label</b>"));
+  ttPaintbrush.addMouseAction(ModeTooltipBuilder::LMB, tr("Place and move the 3D cursor"), mod_option);
+  ttPaintbrush.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image slices"));
+  ttPaintbrush.addMouseAction(
+    ModeTooltipBuilder::SCROLL, tr("Scroll through image components"), mod_shift);
   ui->actionPaintbrush->setToolTip(ttPaintbrush.makeTooltip());
 
-  ModeTooltipBuilder ttSnake("Active Contour (aka \"Snake\") Segmentation Mode (5)",
-                             "Used to select the region of interest for semi-automatic active contour "
-                             "segmentation and start the semi-automatic segmentation wizard.");
-  ttSnake.addMouseAction(ModeTooltipBuilder::LMB, "<b>Adjust the boundaries of the region of interest</b>");
-  ttSnake.addMouseAction(ModeTooltipBuilder::RMB, "Zoom in and out (hold & drag)");
-  ttSnake.addMouseAction(ModeTooltipBuilder::LMB, "Place and move the 3D cursor",mod_option);
-  ttSnake.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image slices");
-  ttSnake.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image components",mod_shift);
+  ModeTooltipBuilder ttSnake(
+    tr("Active Contour (aka \"Snake\") Segmentation Mode (5)"),
+    tr("Used to select the region of interest for semi-automatic active contour "
+       "segmentation and start the semi-automatic segmentation wizard."));
+  ttSnake.addMouseAction(ModeTooltipBuilder::LMB,
+                         tr("<b>Adjust the boundaries of the region of interest</b>"));
+  ttSnake.addMouseAction(ModeTooltipBuilder::RMB, tr("Zoom in and out (hold & drag)"));
+  ttSnake.addMouseAction(ModeTooltipBuilder::LMB, tr("Place and move the 3D cursor"), mod_option);
+  ttSnake.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image slices"));
+  ttSnake.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image components"), mod_shift);
   ui->actionSnake->setToolTip(ttSnake.makeTooltip());
 
-  ModeTooltipBuilder ttRuler("Image Annotation Mode (6)",
-                             "Used to draw annotations (lines, text) on image slices and to measure "
-                             "distances and angles between points in a slice.");
-  ttRuler.addMouseAction(ModeTooltipBuilder::LMB, "<b>Draw and edit annotations</b>");
-  ttRuler.addMouseAction(ModeTooltipBuilder::RMB, "Zoom in and out (hold & drag)");
-  ttRuler.addMouseAction(ModeTooltipBuilder::LMB, "Place and move the 3D cursor",mod_option);
-  ttRuler.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image slices");
-  ttRuler.addMouseAction(ModeTooltipBuilder::SCROLL, "Scroll through image components",mod_shift);
+  ModeTooltipBuilder ttRuler(
+    tr("Image Annotation Mode (6)"),
+    tr("Used to draw annotations (lines, text) on image slices and to measure "
+       "distances and angles between points in a slice."));
+  ttRuler.addMouseAction(ModeTooltipBuilder::LMB, tr("<b>Draw and edit annotations</b>"));
+  ttRuler.addMouseAction(ModeTooltipBuilder::RMB, tr("Zoom in and out (hold & drag)"));
+  ttRuler.addMouseAction(ModeTooltipBuilder::LMB, tr("Place and move the 3D cursor"), mod_option);
+  ttRuler.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image slices"));
+  ttRuler.addMouseAction(ModeTooltipBuilder::SCROLL, tr("Scroll through image components"), mod_shift);
   ui->actionAnnotation->setToolTip(ttRuler.makeTooltip());
 
   // Translate the tooltips in all the widgets. This changes the apple symbols that are currently
@@ -501,6 +520,16 @@ void MainImageWindow::Initialize(GlobalUIModel *model)
   // Attach the progress reporter delegate to the model
   m_Model->SetProgressReporterDelegate(m_ProgressReporterDelegate);
 
+  // Attach a progress delegate to IRISApplication so remote image downloads
+  // (scp://, sftp:// URLs) show in the same overlay widget as DLS tasks.
+  auto *remoteProgressDelegate = new QtProgressDelegate(m_ProgressFader, this);
+  m_Model->GetDriver()->SetProgressDelegate(remoteProgressDelegate);
+
+  // Attach an SSH auth delegate so password/passphrase prompts are shown
+  // when public-key authentication fails for remote URLs.
+  auto *sshAuthDelegate = new QtSSHAuthDelegate(this);
+  m_Model->GetDriver()->SetSSHAuthDelegate(sshAuthDelegate);
+
   // Listen for changes to the main image, updating the recent image file
   // menu. TODO: a more direct way would be to listen to changes to the
   // history, but that requires making history an event-firing object
@@ -551,6 +580,11 @@ void MainImageWindow::Initialize(GlobalUIModel *model)
         ValueChangedEvent(), this, SLOT(onModelUpdate(EventBucket)));
 
 
+  // Listen to file/URL drop requests from other ITK-SNAP instances via IPC
+  LatentITKEventNotifier::connect(
+        model->GetSynchronizationModel(), IPCDropEvent(),
+        this, SLOT(onModelUpdate(EventBucket)));
+
   // Listen to 4D Image Time Point Replay event
   LatentITKEventNotifier::connect(
         model->GetDriver()->GetGlobalState()->Get4DReplayModel(),
@@ -559,16 +593,6 @@ void MainImageWindow::Initialize(GlobalUIModel *model)
   LatentITKEventNotifier::connect(
         model->GetDriver()->GetGlobalState()->Get4DReplayIntervalModel(),
         ValueChangedEvent(), this, SLOT(onModelUpdate(EventBucket)));
-
-
-  // Couple the visibility of each view panel to the correponding property
-  // model in DisplayLayoutModel
-  DisplayLayoutModel *layoutModel = m_Model->GetDisplayLayoutModel();
-  for(int i = 0; i < 4; i++)
-    {
-    makeWidgetVisibilityCoupling(m_ViewPanels[i],
-                                 layoutModel->GetViewPanelVisibilityModel(i));
-    }
 
   // Set up activations - File menu
   activateOnFlag(ui->actionOpenMain, m_Model, UIF_IRIS_MODE);
@@ -673,6 +697,11 @@ void MainImageWindow::Initialize(GlobalUIModel *model)
 
   // Set the synchronization state
   m_Model->GetSynchronizationModel()->SetCanBroadcast(this->isActiveWindow());
+
+  // Wire up the Window menu. On macOS the native menu bar only emits
+  // aboutToShow for non-empty menus, so seed one placeholder item.
+  ui->menuWindow->addAction(tr("(no windows)"));
+  connect(ui->menuWindow, &QMenu::aboutToShow, this, &MainImageWindow::onWindowMenuAboutToShow);
 }
 
 void MainImageWindow::ShowFirstTime()
@@ -712,9 +741,11 @@ void MainImageWindow::onModelUpdate(const EventBucket &b)
   bool selected_seg_layer_changed =
       b.HasEvent(ValueChangedEvent(), m_Model->GetGlobalState()->GetSelectedSegmentationLayerIdModel());
   bool display_layout_changed = b.HasEvent(DisplayLayoutModel::DisplayLayoutChangeEvent());
+  bool view_panel_layout_changed = b.HasEvent(DisplayLayoutModel::ViewPanelLayoutChangeEvent());
   bool layer_layout_changed = b.HasEvent(DisplayLayoutModel::LayerLayoutChangeEvent());
   bool replay_4d_changed = b.HasEvent(ValueChangedEvent(), m_Model->GetGlobalState()->Get4DReplayModel());
   bool replay_4d_interval_changed = b.HasEvent(ValueChangedEvent(),  m_Model->GetGlobalState()->Get4DReplayIntervalModel());
+  bool ipc_uri_drop = b.HasEvent(IPCDropEvent(), m_Model->GetSynchronizationModel());
 
   if(main_changed)
     {
@@ -745,6 +776,9 @@ void MainImageWindow::onModelUpdate(const EventBucket &b)
   if(proj_file_changed)
     this->UpdateProjectMenuItems();
 
+  if(view_panel_layout_changed || main_changed)
+    this->UpdateViewPanelVisibility();
+
   if(display_layout_changed)
     this->UpdateCanvasDimensions();
 
@@ -760,7 +794,14 @@ void MainImageWindow::onModelUpdate(const EventBucket &b)
   if(replay_4d_changed || replay_4d_interval_changed)
     this->Update4DReplay();
 
+  // The slide window coordinator is a model that is not connected to any widget,
+  // so when it rebroadcasts events, these events are not responded to. Here we
+  // call it's update method to make sure that those events are attended to
+  this->GetModel()->GetSliceCoordinator()->Update();
 
+  // If a drop has occurred fire slot to open the drop dialog
+  if(ipc_uri_drop)
+    onIPCDrop();
 }
 
 void MainImageWindow::externalStyleSheetFileChanged(const QString &file)
@@ -784,31 +825,59 @@ void MainImageWindow::onActiveChanged()
     }
 }
 
-void MainImageWindow::UpdateMainLayout()
+void
+MainImageWindow::UpdateMainLayout()
 {
   // Update the image dimensions
   this->UpdateCanvasDimensions();
 
   // Choose what page to show depending on if an image has been loaded
-  if(m_Model->GetDriver()->IsMainImageLoaded())
-    {
+  if (m_Model->GetDriver()->IsMainImageLoaded())
+  {
     ui->stackMain->setCurrentWidget(ui->pageMain);
     m_DockLeft->setWidget(m_ControlPanel);
-    }
-  else
+
+    // Update the layout depending on whether this is a 2D or 3D image
+    auto *main = m_Model->GetDriver()->GetIRISImageData()->GetMain();
+
+    // If the image is 2D, update the display layout to only show the 2D view
+    auto *dlm = m_Model->GetDisplayLayoutModel();
+
+    // Start by setting the view panel layout to VIEW_ALL. This also has the benefit of
+    // making subsequet calls to dlm->GetViewPanelExpandButtonActionModel return actual
+    // layouts, not VIEW_ALL
+    dlm->GetViewPanelLayoutModel()->SetValue(DisplayLayoutModel::VIEW_ALL);
+
+    // Is this a 2D image?
+    if (main->GetSize()[2] == 1)
     {
+      for (int i = 0; i < 3; i++)
+      {
+        auto *slice_model = m_Model->GetSliceModel(i);
+        slice_model->Update();
+        if (slice_model->GetSliceDirectionInImageSpace() == 2)
+        {
+          auto layout = dlm->GetViewPanelExpandButtonActionModel(i)->GetValue();
+          dlm->GetViewPanelLayoutModel()->SetValue(layout);
+          break;
+        }
+      }
+    }
+  }
+  else
+  {
     // Go to the splash page
     ui->stackMain->setCurrentWidget(ui->pageSplash);
     m_DockLeft->setWidget(m_SplashPanel);
 
     // Choose the appropriate page depending on whether there are recent images
     // available
-    if(m_Model->IsHistoryEmpty("MainImage"))
+    if (m_Model->IsHistoryEmpty("MainImage"))
       ui->tabSplash->setCurrentWidget(ui->tabGettingStarted);
 
-    else if(ui->tabSplash->currentWidget() == ui->tabGettingStarted)
+    else if (ui->tabSplash->currentWidget() == ui->tabGettingStarted)
       ui->tabSplash->setCurrentWidget(ui->tabRecent);
-    }
+  }
 }
 
 
@@ -876,12 +945,12 @@ void MainImageWindow::UpdateLayerLayoutActions()
   if(ll == LAYOUT_TILED)
     {
     ui->actionToggleLayerLayout->setIcon(QIcon(":/root/layout_thumb_16.png"));
-    ui->actionToggleLayerLayout->setText("Enter Thumbnail Layout");
+    ui->actionToggleLayerLayout->setText(tr("Enter Thumbnail Layout"));
     }
   else if(ll == LAYOUT_STACKED)
     {
     ui->actionToggleLayerLayout->setIcon(QIcon(":/root/layout_tile_16.png"));
-    ui->actionToggleLayerLayout->setText("Enter Tiled Layout");
+    ui->actionToggleLayerLayout->setText(tr("Enter Tiled Layout"));
     }
 }
 
@@ -897,13 +966,13 @@ void MainImageWindow::UpdateSelectedLayerActions()
     ui->actionUnload_Last_Overlay->setVisible(true);
     ui->actionUnload_Last_Overlay->setEnabled(true);
     ui->actionUnload_Last_Overlay->setText(
-          QString("Close image \"%1\"").arg(from_utf8(layer->GetNickname())));
+          tr("Close image \"%1\"").arg(from_utf8(layer->GetNickname())));
     }
   else
     {
     ui->actionUnload_Last_Overlay->setVisible(false);
     ui->actionUnload_Last_Overlay->setEnabled(false);
-    ui->actionUnload_Last_Overlay->setText("Close selected image");
+    ui->actionUnload_Last_Overlay->setText(tr("Close selected image"));
     }
 }
 
@@ -959,6 +1028,34 @@ void MainImageWindow::UpdateDICOMContentsMenu()
 
   // Hide or show the menu based on availability of actions
   ui->menuAddAnotherDicomImage->menuAction()->setVisible(have_actions);
+}
+
+void
+MainImageWindow::UpdateViewPanelVisibility()
+{
+  QGridLayout *layout = dynamic_cast<QGridLayout *>(ui->pageMain->layout());
+  int col_stretch[2] = {0, 0}, row_stretch[2] = {0, 0};
+
+  for(unsigned int i = 0; i < 4; i++)
+  {
+    auto *m = m_Model->GetDisplayLayoutModel()->GetViewPanelVisibilityModel(i);
+    bool visible = m->GetValue();
+    m_ViewPanels[i]->setVisible(visible);
+    if(visible)
+    {
+      // Look up the position of the widget in the layout
+      int row, column, rowSpan, columnSpan;
+      layout->getItemPosition(layout->indexOf(m_ViewPanels[i]), &row, &column, &rowSpan, &columnSpan);
+      col_stretch[column] = 1;
+      row_stretch[row] = 1;
+    }
+  }
+
+  for(unsigned int i = 0; i < 2; i++)
+  {
+    layout->setColumnStretch(i, col_stretch[i]);
+    layout->setRowStretch(i, row_stretch[i]);
+  }
 }
 
 void MainImageWindow::CreateRecentMenu(
@@ -1037,57 +1134,61 @@ void MainImageWindow::UpdateWindowTitle()
   if(projfile.length())
     {
     // If a project has multiple layers, we should indicate which segmentation image is being viewed
-    this->setWindowTitle(QString("%1 - ITK-SNAP").arg(projfile));
+    this->setWindowTitle(tr("%1 - ITK-SNAP").arg(projfile));
     }
   else if(mainfile.length() && segfile.length())
     {
-    this->setWindowTitle(QString("%1 - %2 - ITK-SNAP").arg(mainfile).arg(segfile));
+    this->setWindowTitle(tr("%1 - %2 - ITK-SNAP").arg(mainfile).arg(segfile));
     }
   else if(mainfile.length())
     {
-    this->setWindowTitle(QString("%1 - New Segmentation - ITK-SNAP").arg(mainfile));
+    this->setWindowTitle(tr("%1 - New Segmentation - ITK-SNAP").arg(mainfile));
     }
   else
     {
-    this->setWindowTitle("ITK-SNAP");
+    this->setWindowTitle(tr("ITK-SNAP"));
     }
+
+  // Update the IPC instance directory slot with the new title
+  m_Model->GetSynchronizationModel()->UpdateWindowTitle(
+    this->windowTitle().toStdString());
 
   // Set up the save segmentation menu items
   if(segfile.length())
     {
-    ui->actionSaveSegmentation->setText(QString("Save \"%1\"").arg(segfile));
-    ui->actionSaveSegmentationAs->setText(QString("Save \"%1\" as...").arg(segfile));
+    ui->actionSaveSegmentation->setText(tr("Save \"%1\"").arg(segfile));
+    ui->actionSaveSegmentationAs->setText(tr("Save \"%1\" as...").arg(segfile));
     ui->actionSaveSegmentationAs->setVisible(true);
-    ui->actionReloadSegmentation->setText(QString("Reload \"%1\" from File").arg(segfile));
+    ui->actionReloadSegmentation->setText(tr("Reload \"%1\" from File").arg(segfile));
     ui->actionReloadSegmentation->setVisible(true);
     }
   else if(mainfile.length())
     {
-    QString infix4D(is4D ? "4D " : "");
-    ui->actionSaveSegmentation->setText(QString("Save %1Segmentation Image ...").arg(infix4D));
+    QString label = is4D ? tr("Save 4D Segmentation Image ...") : tr("Save Segmentation Image ...");
+    ui->actionSaveSegmentation->setText(QString(label));
     ui->actionSaveSegmentationAs->setVisible(false);
     ui->actionReloadSegmentation->setVisible(false);
     }
   else
     {
-    ui->actionSaveSegmentation->setText(QString("Save"));
-    ui->actionSaveSegmentationAs->setText(QString("Save as..."));
+    ui->actionSaveSegmentation->setText(tr("Save"));
+    ui->actionSaveSegmentationAs->setText(tr("Save as..."));
     ui->actionReloadSegmentation->setVisible(false);
     }
 
   // Set up the segmentation items
   if(gid->GetNumberOfLayers(LABEL_ROLE) > 1)
     {
-    ui->actionClear->setText(QString("Unload All Segmentations"));
+    ui->actionClear->setText(tr("Unload All Segmentations"));
     ui->actionClearActive->setVisible(true);
     if(segfile.length())
-      ui->actionClearActive->setText(QString("Unload \"%1\"").arg(segfile));
+      ui->actionClearActive->setText(tr("Unload \"%1\"").arg(segfile));
     else
-      ui->actionClearActive->setText(QString("Unload Active Segmentation"));
+      ui->actionClearActive->setText(tr("Unload Active Segmentation"));
     }
   else
     {
-    ui->actionClear->setText(QString("Unload Segmentation"));
+    ui->actionClear->setText(tr("Unload Segmentation"));
     ui->actionClearActive->setVisible(false);
     }
 }
@@ -1100,11 +1201,11 @@ void MainImageWindow::UpdateProjectMenuItems()
     {
     // Get the filename without path
     ui->actionSaveWorkspace->setText(
-          QString("Save Workspace \"%1\"").arg(QFileInfo(project).fileName()));
+          tr("Save Workspace \"%1\"").arg(QFileInfo(project).fileName()));
     }
   else
     {
-    ui->actionSaveWorkspace->setText(QString("Save Workspace ..."));
+    ui->actionSaveWorkspace->setText(tr("Save Workspace ..."));
     }
 }
 
@@ -1122,15 +1223,15 @@ SliceViewPanel * MainImageWindow::GetSlicePanel(unsigned int i)
 
 void MainImageWindow::closeEvent(QCloseEvent *event)
 {
+  // Close all the windows that are open
+  QApplication::closeAllWindows();
+
   // Prompt for unsaved changes
   if(!SaveModifiedLayersDialog::PromptForUnsavedChanges(m_Model))
     {
     event->ignore();
     return;
     }
-
-  // Close all the windows that are open
-  QApplication::closeAllWindows();
 
   // Unload all images (this causes the associations to be saved)
   m_Model->GetDriver()->Quit();
@@ -1209,7 +1310,7 @@ void MainImageWindow::OpenSnakeWizard()
   m_SizeWithoutRightDock = this->size();
 
   // Make the dock containing the wizard visible
-  m_DockRight->setWindowTitle("Segment 3D");
+  m_DockRight->setWindowTitle(tr("Segment 3D"));
   m_RightDockStack->setCurrentWidget(m_SnakeWizard);
   m_DockRight->setVisible(true);
 }
@@ -1258,45 +1359,74 @@ void MainImageWindow::dragEnterEvent(QDragEnterEvent *event)
     }
 }
 
-void MainImageWindow::LoadDroppedFile(QString file)
+void
+MainImageWindow::LoadDroppedFile(QString file, bool dragged_to_window)
 {
-  std::string filename = to_utf8(file);
-  // Check if the dropped file is a project
-  if(m_Model->GetDriver()->IsProjectFile(filename.c_str()))
-    {
-    // For the time being, the feature of opening the workspace in a new
-    // window is not implemented. Instead, we just prompt the user for
-    // unsaved changes.
-    if(!SaveModifiedLayersDialog::PromptForUnsavedChanges(m_Model))
-      return;
+  auto *d = m_Model->GetDriver();
+  try
+  {
+    std::string filename = to_utf8(file);
+    // Check if the dropped file is a project. For remote URLs (scp://, sftp://)
+    // IsProjectFile cannot read the file content, so we fall back to checking
+    // the .itksnap extension
+    bool isRemote = IsRemoteImageURL(filename);
+    bool isProject = (isRemote && file.endsWith(".itksnap", Qt::CaseInsensitive)) ||
+                     (!isRemote && d->IsProjectFile(filename.c_str()));
 
-    // Load the project
-    LoadProject(file);
+    if (isProject)
+    {
+      if (dragged_to_window || !d->IsMainImageLoaded())
+      {
+        // Since the user dragged the workspace to this window, they intend to have it
+        // opened in this window. So we prompt for unsaved changes and then open the
+        // workspace in this window
+        if (!SaveModifiedLayersDialog::PromptForUnsavedChanges(m_Model))
+          return;
+
+        // Load the project
+        LoadProject(file);
+      }
+      else
+      {
+        // There is already something in this window and the user didn't direct the
+        // workspace to this window, so we should just open in a new ITK-SNAP
+        std::list<std::string> args;
+        args.push_back("-w");
+        args.push_back(filename);
+        m_Model->GetSystemInterface()->LaunchChildSNAPSimple(args);
+      }
     }
 
-  else
+
+    else
     {
-    if(m_Model->GetDriver()->IsMainImageLoaded())
+      if (d->IsMainImageLoaded())
       {
-      // check if it's a label description file
-      if (m_Model->GetDriver()->GetColorLabelTable()->ValidateFile(filename.c_str()))
+        // check if it's a label description file (this only works locally)
+        if (!isRemote && d->GetColorLabelTable()->ValidateFile(filename.c_str()))
         {
-        m_Model->GetDriver()->LoadLabelDescriptions(filename.c_str());
-        return;
+          d->LoadLabelDescriptions(filename.c_str());
+          return;
         }
 
-      // If an image is already loaded, we show the dialog
-      m_DropDialog->SetDroppedFilename(file);
-      m_DropDialog->setModal(true);
+        // If an image is already loaded, we show the dialog
+        m_DropDialog->SetDroppedFilename(file);
+        m_DropDialog->setModal(true);
 
-      RaiseDialog(m_DropDialog);
+        RaiseDialog(m_DropDialog);
       }
-    else
+      else
       {
-      // Otherwise, load the main image directly
-      m_DropDialog->InitialLoad(file);
+        // Otherwise, load the main image directly
+        m_DropDialog->InitialLoad(file);
       }
     }
+  }
+  catch (exception &exc) // for minor exceptions, no need to crash the entire program
+  {
+    ReportNonLethalException(
+      this, exc, tr("File Dropping Error"), tr("Failed to load file %1").arg(file));
+  }
 }
 
 #ifdef __APPLE__
@@ -1307,6 +1437,7 @@ void MainImageWindow::LoadDroppedFile(QString file)
 void MainImageWindow::dropEvent(QDropEvent *event)
 {
   QUrl url = event->mimeData()->urls().first();
+  qDebug() << "DROP EVENT: " << url;
 
 #if defined(__APPLE__) && QT_VERSION >= 0x050000
   // TODO: this is a Yosemite bug fix - bug https://bugreports.qt.io/browse/QTBUG-40449
@@ -1373,7 +1504,7 @@ void MainImageWindow::dropEvent(QDropEvent *event)
 
   QString file = url.toLocalFile();
   event->acceptProposedAction();
-  LoadDroppedFile(file);
+  LoadDroppedFile(file, true);
 }
 
 QActionGroup *MainImageWindow::GetMainToolActionGroup()
@@ -1389,6 +1520,12 @@ QActionGroup *MainImageWindow::Get3DToolActionGroup()
 LayerInspectorDialog *MainImageWindow::GetLayerInspector()
 {
   return m_LayerInspector;
+}
+
+PreferencesDialog *
+MainImageWindow::GetPreferencesDialog() const
+{
+  return m_PreferencesDialog;
 }
 
 void MainImageWindow::LoadMainImage(const QString &file)
@@ -1417,11 +1554,12 @@ void MainImageWindow::LoadMainImage(const QString &file)
 		m_Model->GetDriver()->OpenImageViaDelegate(file.toUtf8().constData(), del, warnings,
 																							 NULL, irProgAccum.GetPointer());
     }
+  catch(IRISUserCancelException &) {}
   catch(exception &exc)
     {
     progress->close();
-    ReportNonLethalException(this, exc, "Image IO Error",
-                             QString("Failed to load image %1").arg(file));
+    ReportNonLethalException(this, exc, tr("Image IO Error"),
+                             tr("Failed to load image %1").arg(file));
 
     }
 }
@@ -1460,11 +1598,12 @@ void MainImageWindow::LoadRecentOverlayActionTriggered()
 		m_Model->GetDriver()->OpenImageViaDelegate(file.toUtf8().constData(), del, warnings,
 																							 NULL, irProgAccum);
     }
+  catch(IRISUserCancelException &) {}
   catch(exception &exc)
     {
     progress->close();
-    ReportNonLethalException(this, exc, "Image IO Error",
-                             QString("Failed to load overlay image %1").arg(file));
+    ReportNonLethalException(this, exc, tr("Image IO Error"),
+                             tr("Failed to load overlay image %1").arg(file));
     }
 }
 
@@ -1495,11 +1634,12 @@ void MainImageWindow::LoadRecentSegmentation(QString file, bool additive)
 		m_Model->GetDriver()->OpenImageViaDelegate(file.toUtf8().constData(), del, warnings,
 																							 NULL, irProgAccum);
     }
+  catch(IRISUserCancelException &) {}
   catch(exception &exc)
     {
     progress->close();
-    ReportNonLethalException(this, exc, "Image IO Error",
-                             QString("Failed to load segmentation image %1").arg(file));
+    ReportNonLethalException(this, exc, tr("Image IO Error"),
+                             tr("Failed to load segmentation image %1").arg(file));
     }
 }
 
@@ -1529,8 +1669,8 @@ void MainImageWindow::LoadLabelDefinitions(QString file)
     }
   catch(std::exception &exc)
     {
-    ReportNonLethalException(this, exc, "Label Definitions IO Error",
-                             QString("Failed to load label definitions from file"));
+    ReportNonLethalException(this, exc, tr("Label Definitions IO Error"),
+                             tr("Failed to load label definitions from file"));
     }
 }
 
@@ -1564,8 +1704,8 @@ void MainImageWindow::LoadAnotherDicomActionTriggered()
     }
   catch(exception &exc)
     {
-    ReportNonLethalException(this, exc, "Image IO Error",
-                             QString("Failed to load overlay image %1").arg(action->text()));
+    ReportNonLethalException(this, exc, tr("Image IO Error"),
+                             tr("Failed to load overlay image %1").arg(action->text()));
     }
 
 }
@@ -1574,21 +1714,28 @@ void MainImageWindow::LoadAnotherDicomActionTriggered()
 
 void MainImageWindow::LoadProject(const QString &file)
 {
-  // Try loading the image
+  auto *driver = m_Model->GetDriver();
+  AbstractProgressDelegate *savedDelegate = driver->GetProgressDelegate();
+
+  ProgressReportDialog *progressDlg = new ProgressReportDialog(tr("Opening workspace..."), this);
+  driver->SetProgressDelegate(progressDlg->GetDelegate());
+  progressDlg->open();
+
   try
     {
-    // Change cursor for this operation
     QtCursorOverride c(Qt::WaitCursor);
     IRISWarningList warnings;
-
-    // Load the project
-    m_Model->GetDriver()->OpenProject(to_utf8(file), warnings);
+    driver->OpenWorkspace(to_utf8(file), warnings);
     }
   catch(exception &exc)
     {
-    ReportNonLethalException(this, exc, "Error Opening Project",
-                             QString("Failed to open project %1").arg(file));
-  }
+    ReportNonLethalException(this, exc, tr("Error Opening Project"),
+                             tr("Failed to open project %1").arg(file));
+    }
+
+  driver->SetProgressDelegate(savedDelegate);
+  if (progressDlg->isVisible())
+    progressDlg->done(0);
 }
 
 void MainImageWindow::LoadProjectInNewInstance(const QString &file)
@@ -1602,7 +1749,7 @@ void MainImageWindow::LoadProjectInNewInstance(const QString &file)
   }
   catch(IRISException &exc)
   {
-    ReportNonLethalException(this, exc, "Failed to open workspace in new ITK-SNAP window");
+    ReportNonLethalException(this, exc, tr("Failed to open workspace in new ITK-SNAP window"));
   }
 }
 
@@ -1616,6 +1763,12 @@ void MainImageWindow::on4DReplayTimeout()
 {
   if(m_Model && m_Model->GetDriver()->GetNumberOfTimePoints() > 1)
     {
+    // Skip this frame if a background mesh computation is running. Advancing
+    // the time point calls SetTimePointIndex which mutates the ITK pipeline,
+    // causing a data race with the thread reading image buffers for meshing.
+    if(m_Model->GetModel3D()->IsMeshUpdating())
+      return;
+
     int crntTP = m_Model->GetDriver()->GetCursorTimePoint();
     int nextTP = (crntTP + 1) % (m_Model->GetDriver()->GetNumberOfTimePoints());
     m_Model->GetDriver()->SetCursorTimePoint(nextTP);
@@ -1795,7 +1948,7 @@ void MainImageWindow::ExportScreenshot(int panelIndex)
   else
     {
     SliceViewPanel *svp = reinterpret_cast<SliceViewPanel *>(m_ViewPanels[panelIndex]);
-    svp->GetSliceView()->SaveScreenshot(to_utf8(fuser));
+    svp->SaveScreenshot(to_utf8(fuser));
     }
 
   // Store the last filename
@@ -1846,14 +1999,13 @@ void MainImageWindow::ExportScreenshotSeries(AnatomicalDirection direction)
   std::string filename = to_utf8(QDir(duser).filePath(names[direction]));
 
   // back up cursor location
-  Vector3ui xCrossImageOld = m_Model->GetDriver()->GetCursorPosition();
-  Vector3ui xCrossImage = xCrossImageOld;
-  Vector3ui xSize = m_Model->GetDriver()->GetCurrentImageData()->GetVolumeExtents();
+  Vector3i xCrossImageOld = m_Model->GetDriver()->GetCursorPosition();
+  Vector3i xCrossImage = xCrossImageOld;
+  Vector3ui xSize = m_Model->GetDriver()->GetCurrentImageData()->GetReferenceSpaceSize();
   xCrossImage[iImageDir] = 0;
 
   // Get the panel that's saving
   SliceViewPanel *svp = reinterpret_cast<SliceViewPanel *>(m_ViewPanels[iWindow]);
-  QtVTKRenderWindowBox *target = svp->GetSliceView();
 
   // turn sync off temporarily
   bool sync_state = m_Model->GetSynchronizationModel()->GetSyncEnabled();
@@ -1865,8 +2017,7 @@ void MainImageWindow::ExportScreenshotSeries(AnatomicalDirection direction)
     m_Model->GetDriver()->SetCursorPosition(xCrossImage);
 
     // Repaint the GL window and save screenshot
-    target->SaveScreenshot(filename);
-    target->update();
+    svp->SaveScreenshot(filename);
 
     // Needed for this to actually save individual screenshots
     QCoreApplication::processEvents();
@@ -1912,8 +2063,8 @@ void MainImageWindow::on_actionLoadLabels_triggered()
   // Ask for a filename
   QString selection = ShowSimpleOpenDialogWithHistory(
         this, m_Model, "LabelDescriptions",
-        "Open Label Descriptions - ITK-SNAP",
-        "Label Description File",
+        tr("Open Label Descriptions - ITK-SNAP"),
+        tr("Label Description File"),
         "Text Files (*.txt);; Label Files (*.label)");
 
   // Open the labels from the selection
@@ -1926,8 +2077,8 @@ void MainImageWindow::on_actionSaveLabels_triggered()
   // Ask for a filename
   QString selection = ShowSimpleSaveDialogWithHistory(
         this, m_Model, "LabelDescriptions",
-        "Save Label Descriptions - ITK-SNAP",
-        "Label Description File",
+        tr("Save Label Descriptions - ITK-SNAP"),
+        tr("Label Description File"),
         "Text Files (*.txt);; Label Files (*.label)",
         true);
 
@@ -1941,8 +2092,8 @@ void MainImageWindow::on_actionSaveLabels_triggered()
       }
     catch(std::exception &exc)
       {
-      ReportNonLethalException(this, exc, "Label Description IO Error",
-                               QString("Failed to save label descriptions"));
+      ReportNonLethalException(this, exc, tr("Label Description IO Error"),
+                               tr("Failed to save label descriptions"));
       }
     }
 }
@@ -2118,8 +2269,8 @@ void MainImageWindow::on_actionOpenWorkspace_triggered()
 
   // Use the dialog with history - to be consistent with other parts of SNAP
   QString file = ShowSimpleOpenDialogWithHistory(
-        this, m_Model, "Project", "Open Workspace",
-        "Workspace File", "ITK-SNAP Workspace Files (*.itksnap)");
+        this, m_Model, "Project", tr("Open Workspace"),
+        tr("Workspace File"), tr("ITK-SNAP Workspace Files (*.itksnap)"));
 
   // If user hits cancel, move on
   if(file.isNull())
@@ -2136,12 +2287,12 @@ void MainImageWindow::on_actionOpenWorkspace_triggered()
     IRISWarningList warnings;
 
     // Load the project
-    m_Model->GetDriver()->OpenProject(to_utf8(file_abs), warnings);
+    m_Model->GetDriver()->OpenWorkspace(to_utf8(file_abs), warnings);
     }
   catch(exception &exc)
     {
-    ReportNonLethalException(this, exc, "Error Opening Project",
-                             QString("Failed to open project %1").arg(file_abs));
+    ReportNonLethalException(this, exc, tr("Error Opening Project"),
+                             tr("Failed to open project %1").arg(file_abs));
     }
 }
 
@@ -2189,9 +2340,9 @@ void MainImageWindow::ExportSlice(AnatomicalDirection direction)
   // Open a file browser and have the user select something
   std::string fuser = to_utf8(ShowSimpleSaveDialogWithHistory(
         this, m_Model, "Slices",
-        "Save Slice - ITK-SNAP",
-        "Slice Image File",
-        "PNG Image (*.png);;TIFF Image (*.tiff *.tif);;JPEG Image (*.jpg *.jpeg)",true));
+        tr("Save Slice - ITK-SNAP"),
+        tr("Slice Image File"),
+        tr("PNG Image (*.png);;TIFF Image (*.tiff *.tif);;JPEG Image (*.jpg *.jpeg)"),true));
 
   if(fuser.length())
     m_Model->GetDriver()->ExportSlice(direction, fuser.c_str());
@@ -2295,31 +2446,31 @@ void MainImageWindow::DoUpdateCheck(bool quiet)
   if(us == SystemInterface::US_OUT_OF_DATE)
     {
     QMessageBox mbox(this);
-    QPushButton *downloadButton = mbox.addButton("Open Download Page", QMessageBox::ActionRole);
-    mbox.addButton("Not Now", QMessageBox::RejectRole);
+    QPushButton *downloadButton = mbox.addButton(tr("Open Download Page"), QMessageBox::ActionRole);
+    mbox.addButton(tr("Not Now"), QMessageBox::RejectRole);
     mbox.setIcon(QMessageBox::Question);
-    mbox.setText(QString("A newer ITK-SNAP version (%1) is available.").arg(nver.c_str()));
-    mbox.setInformativeText("Do you want to download the latest version?");
-    mbox.setWindowTitle("ITK-SNAP Update Check");
+    mbox.setText(tr("A newer ITK-SNAP version (%1) is available.").arg(nver.c_str()));
+    mbox.setInformativeText(tr("Do you want to download the latest version?"));
+    mbox.setWindowTitle(tr("ITK-SNAP Update Check"));
     mbox.exec();
 
     if (mbox.clickedButton() == downloadButton)
       {
-      QDesktopServices::openUrl(QUrl("http://www.itksnap.org/pmwiki/pmwiki.php?n=Downloads.SNAP3"));
+      QDesktopServices::openUrl(QUrl("http://www.itksnap.org/pmwiki/pmwiki.php?n=Downloads.SNAP4"));
       }
     }
   else if(us == SystemInterface::US_UP_TO_DATE && !quiet)
     {
-    QMessageBox::information(this, "ITK-SNAP Update Check",
-                             "Your version of ITK-SNAP is up to date!",
+    QMessageBox::information(this, tr("ITK-SNAP Update Check"),
+                             tr("Your version of ITK-SNAP is up to date!"),
                              QMessageBox::Ok);
     }
   else if(us == SystemInterface::US_CONNECTION_FAILED && !quiet)
     {
     QMessageBox::warning(this,
-                         "ITK-SNAP Update Check Failed",
-                         "Could not connect to server. Go to itksnap.org to check if a new"
-                         " version is available.");
+                         tr("ITK-SNAP Update Check Failed"),
+                         tr("Could not connect to server. Go to itksnap.org to check if a new"
+                         " version is available."));
     }
 }
 
@@ -2333,9 +2484,9 @@ void MainImageWindow::UpdateAutoCheck()
   if(permission == DefaultBehaviorSettings::UPDATE_UNKNOWN)
     {
     if(QMessageBox::Yes == QMessageBox::question(
-         this, "Allow Automatic Update Checks?",
-         "ITK-SNAP can check for software updates automatically.\n"
-         "Do you want to enable this feature?",
+         this, tr("Allow Automatic Update Checks?"),
+         tr("ITK-SNAP can check for software updates automatically.\n"
+         "Do you want to enable this feature?"),
          QMessageBox::Yes, QMessageBox::No))
       {
       permission = DefaultBehaviorSettings::UPDATE_YES;
@@ -2386,7 +2537,7 @@ void MainImageWindow::on_actionCheck_for_Updates_triggered()
 
 void MainImageWindow::on_actionDocumentation_Home_triggered()
 {
-  QDesktopServices::openUrl(QUrl("http://www.itksnap.org/pmwiki/pmwiki.php?n=Documentation.SNAP3"));
+  QDesktopServices::openUrl(QUrl("http://www.itksnap.org/pmwiki/pmwiki.php?n=Documentation.SNAP4"));
 }
 
 void MainImageWindow::on_actionNew_ITK_SNAP_Window_triggered()
@@ -2396,6 +2547,95 @@ void MainImageWindow::on_actionNew_ITK_SNAP_Window_triggered()
   args.push_back("--cwd");
   args.push_back(to_utf8(GetFileDialogPath(m_Model, "MainImage")));
   m_Model->GetSystemInterface()->LaunchChildSNAPSimple(args);
+}
+
+static void RaiseWindowByPid(long pid)
+{
+#if defined(Q_OS_MACOS)
+  // Use AppleScript to bring the process to the front
+  QString script = QString(
+    "tell application \"System Events\" to set frontmost of "
+    "first process whose unix id is %1 to true").arg(pid);
+  QProcess::startDetached("osascript", {"-e", script});
+
+#elif defined(Q_OS_WIN)
+  // Walk all top-level windows and raise the first visible one owned by pid
+  struct FindData { DWORD pid; HWND hwnd; };
+  FindData fd{ static_cast<DWORD>(pid), nullptr };
+  EnumWindows([](HWND hwnd, LPARAM lp) -> BOOL {
+    auto *d = reinterpret_cast<FindData *>(lp);
+    DWORD wpid = 0;
+    GetWindowThreadProcessId(hwnd, &wpid);
+    if (wpid == d->pid && IsWindowVisible(hwnd)) {
+      d->hwnd = hwnd;
+      return FALSE;
+    }
+    return TRUE;
+  }, reinterpret_cast<LPARAM>(&fd));
+  if (fd.hwnd) {
+    ShowWindow(fd.hwnd, SW_RESTORE);
+    SetForegroundWindow(fd.hwnd);
+  }
+
+#elif defined(Q_OS_LINUX)
+  // Requires wmctrl; silently does nothing if not installed
+  QString pidStr = QString::number(pid);
+  QProcess proc;
+  proc.start("wmctrl", {"-lp"});
+  proc.waitForFinished(2000);
+  for (const QByteArray &line : proc.readAllStandardOutput().split('\n'))
+  {
+    QList<QByteArray> cols = line.simplified().split(' ');
+    if (cols.size() >= 3 && cols[2] == pidStr.toLatin1())
+    {
+      QProcess::startDetached("wmctrl", {"-ia", QString::fromLatin1(cols[0])});
+      break;
+    }
+  }
+#endif
+}
+
+void MainImageWindow::onWindowMenuAboutToShow()
+{
+  ui->menuWindow->clear();
+
+  long myPid = QCoreApplication::applicationPid();
+  auto instances = m_Model->GetSynchronizationModel()->GetRunningInstances();
+
+  if (instances.empty())
+  {
+    QAction *a = ui->menuWindow->addAction(tr("No other windows open"));
+    a->setEnabled(false);
+    return;
+  }
+
+  for (auto &[pid, title] : instances)
+  {
+    QString label = title.empty() ? tr("ITK-SNAP") : QString::fromStdString(title);
+    QAction *a = ui->menuWindow->addAction(label);
+    if (pid == myPid)
+    {
+      a->setCheckable(true);
+      a->setChecked(true);
+    }
+    else
+    {
+      connect(a, &QAction::triggered, this, [pid_var = pid]() { RaiseWindowByPid(pid_var); });
+    }
+  }
+}
+
+void MainImageWindow::onIPCDrop()
+{
+  std::string fn = m_Model->GetSynchronizationModel()->GetPendingDropFilename();
+  if (fn.empty())
+    return;
+
+  // Bring this window to the front before showing the drop dialog
+  raise();
+  activateWindow();
+
+  LoadDroppedFile(QString::fromStdString(fn), true);
 }
 
 void MainImageWindow::on_actionUnload_All_Overlays_triggered()
@@ -2489,7 +2729,7 @@ void MainImageWindow::on_actionRegistration_triggered()
 {
   // Remember the size of the window before the right dock was shown
   m_SizeWithoutRightDock = this->size();
-  m_DockRight->setWindowTitle("Registration");
+  m_DockRight->setWindowTitle(tr("Registration"));
   m_Model->GetRegistrationModel()->SetFreeRotationMode(false);
   m_RightDockStack->setCurrentWidget(m_RegistrationDialog);
   m_DockRight->setVisible(true);
@@ -2500,7 +2740,7 @@ void MainImageWindow::on_actionFree_Rotation_Mode_triggered()
 {
   // Remember the size of the window before the right dock was shown
   m_SizeWithoutRightDock = this->size();
-  m_DockRight->setWindowTitle("Free Rotation");
+  m_DockRight->setWindowTitle(tr("Free Rotation"));
   m_Model->GetRegistrationModel()->SetFreeRotationMode(true);
   m_RightDockStack->setCurrentWidget(m_RegistrationDialog);
   m_DockRight->setVisible(true);
@@ -2567,7 +2807,7 @@ void MainImageWindow::on_actionInstallCLI_triggered()
   QFileInfo fi(QCoreApplication::applicationDirPath(), "../bin/install_cmdl.sh");
   if(fi.exists() && fi.isExecutable())
     {
-    QString html = QString(
+    QString html = tr(
         "<p>ITK-SNAP is packaged with several useful command-line programs. "
         "Visit <a href='http://itksnap.org/cmdl'>http://itksnap.org/cmdl</a> "
         "for a listing of these tools. </p>"
@@ -2582,9 +2822,9 @@ void MainImageWindow::on_actionInstallCLI_triggered()
         arg(fi.absoluteFilePath(), fi.absoluteDir().absolutePath());
 
     QMessageBox msg;
-    msg.setText("How to Install ITK-SNAP Command Line Tools");
+    msg.setText(tr("How to Install ITK-SNAP Command Line Tools"));
     msg.setInformativeText(html);
-    msg.setWindowTitle("Install Command Line Tools -- ITK-SNAP");
+    msg.setWindowTitle(tr("Install Command Line Tools -- ITK-SNAP"));
     msg.setStyleSheet("QLabel{min-width: 700px;}");
     msg.exec();
     }
@@ -2668,7 +2908,7 @@ void MainImageWindow::on_actionReloadSegmentation_triggered()
       }
     catch (IRISException &ex)
       {
-      ReportNonLethalException(this, ex, "Error reloading image from file");
+      ReportNonLethalException(this, ex, tr("Error reloading image from file"));
       }
     }
 }

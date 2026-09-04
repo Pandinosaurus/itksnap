@@ -34,7 +34,7 @@ public:
    * Mesh wrapper does not generate display slices
    * Always returns nullptr
    */
-  virtual DisplaySlicePointer GetDisplaySlice(unsigned int slice) override;
+  virtual DisplaySlicePointer GetDisplaySlice(DisplaySliceIndex index) override;
 
   virtual void Save(Registry &folder) override;
 
@@ -79,6 +79,9 @@ public:
   vtkLookupTable *GetLookupTable();
 
   MeshWrapperBase *GetMeshLayer();
+
+  /** Get the latest modification time between this object and its color map and intensity curve */
+  virtual itk::ModifiedTimeType GetDeepMTime() const;
 
 protected:
   MeshDisplayMappingPolicy();

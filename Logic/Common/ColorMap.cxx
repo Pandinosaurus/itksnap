@@ -162,7 +162,7 @@ ColorMap
     for(int i = 0; i <= COLORMAP_CUSTOM; i++)
       {
       SystemPreset preset = static_cast<SystemPreset>(i);
-      m_ColorMapPresetEnumMap.AddPair(preset, this->GetPresetName(preset));
+      m_ColorMapPresetEnumMap.AddPair(preset, this->GetPresetName(preset).c_str());
       }
     }
 }
@@ -300,16 +300,16 @@ ColorMap
     CMPoint p = m_CMPoints[i];
     if(p.m_Type == CONTINUOUS)
       {
-      sprintf(buffer,
+      snprintf(buffer, sizeof(buffer),
               "%02d-C %7.2f   (%03d %03d %03d %03d)\n", (int) i, p.m_Index, p.m_RGBA[0][0], p.m_RGBA[0][1], p.m_RGBA[0][2], p.m_RGBA[0][3]);
       os << indent << buffer;
       }
     else
       {
-      sprintf(buffer,
+      snprintf(buffer, sizeof(buffer),
              "%02d-L %7.2f   (%03d %03d %03d %03d)\n", (int) i, p.m_Index, p.m_RGBA[0][0], p.m_RGBA[0][1], p.m_RGBA[0][2], p.m_RGBA[0][3]);
       os << indent << buffer;
-      sprintf(buffer,
+      snprintf(buffer, sizeof(buffer),
               "%02d-R %7.2f   (%03d %03d %03d %03d)\n", (int) i, p.m_Index, p.m_RGBA[1][0], p.m_RGBA[1][1], p.m_RGBA[1][2], p.m_RGBA[1][3]);
       os << indent << buffer;
       }
@@ -627,29 +627,21 @@ void ColorMap::CopyInformation(const itk::DataObject *source)
   this->Modified();
 }
 
- const char * ColorMap::GetPresetName(ColorMap::SystemPreset preset)
- {
-   static const char *preset_names[] = {
-     "Grayscale",
-     "Jet",
-     "Hot",
-     "Cool",
-     "Black to red",
-     "Black to green",
-     "Black to blue",
-     "Spring",
-     "Summer",
-     "Autumn",
-     "Winter",
-     "Copper",
-     "HSV",
-     "Blue to white to red",
-     "Red to white to blue",
-     "Speed image (blue to black to white)",
-     "Speed image (semi-transparent overlay)",
-     "Level set image",
-     "Custom"
-   };
+AbstractColorMapPresetNameSource *ColorMap::m_ColorMapPresetNameSource = nullptr;
 
-   return preset_names[preset];
- }
+void
+ColorMap::SetColorMapPresetNameSource(AbstractColorMapPresetNameSource *source)
+{
+  m_ColorMapPresetNameSource = source;
+}
+
+
+
+std::string
+ColorMap::GetPresetName(ColorMap::SystemPreset preset)
+{
+  if(!m_ColorMapPresetNameSource)
+    throw IRISException("m_ColorMapPresetNameSource not set in ColorMap::GetPresetName");
+
+  return m_ColorMapPresetNameSource->GetPresetName(preset, false);
+}

@@ -22,6 +22,11 @@
 
 unsigned int GMMRenderer::NUM_POINTS = 200;
 
+GMMRenderer::~GMMRenderer()
+{
+  delete m_HistogramAssembly;
+}
+
 GMMRenderer::GMMRenderer()
 {
   m_Model = NULL;
@@ -165,7 +170,7 @@ void GMMRenderer::UpdatePlotValues()
 
       // Configure the plot
       Vector3d rgb = ColorLabelTable::GetDefaultColorLabel(i+1).GetRGBAsDoubleVector();
-      plot->SetColor(rgb[0], rgb[1], rgb[2]);
+      plot->SetColorF(rgb[0], rgb[1], rgb[2]);
       plot->GetXAxis()->SetBehavior(vtkAxis::FIXED);
       plot->GetXAxis()->SetRange(cmin - hist->GetBinWidth(), cmax + hist->GetBinWidth());
       plot->GetXAxis()->SetTitle("intensity");

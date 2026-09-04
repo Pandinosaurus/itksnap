@@ -39,6 +39,7 @@
 #include <vnl/vnl_matrix_fixed.h>
 #include "itkObjectFactory.h"
 #include "itkSmartPointer.h"
+#include "itkImageRegion.h"
 
 /**
  * \class ImageCoordinateTransform
@@ -65,6 +66,9 @@ public:
   typedef itk::Object                    Superclass;
   typedef itk::SmartPointer<Self>        Pointer;
   typedef itk::SmartPointer<const Self>  ConstPointer;
+  typedef vnl_matrix_fixed<double, 3, 3> MatrixType;
+  typedef vnl_matrix_fixed<double, 4, 4> HomogMatrixType;
+
 
   /** Run-time type information (and related methods). */
   itkTypeMacro(ImageCoordinateTransform, itk::Object)
@@ -101,6 +105,18 @@ public:
   /** Apply to a size vector */
   Vector3ui TransformSize(const Vector3ui &xSize) const;
 
+  /** Apply to a region */
+  itk::ImageRegion<3> TransformRegion(const itk::ImageRegion<3> &region);
+
+  /** Get the homogeneous (4x4) transform matrix */
+  HomogMatrixType ComputeHomogeneousMatrix() const;
+
+  /** Get the transform matrix (3x3) */
+  irisGetMacro(Transform, MatrixType)
+
+  /** Get the offset */
+  irisGetMacro(Offset, Vector3d)
+
   /** Get the index of a particular coordinate */
   unsigned int GetCoordinateIndexZeroBased(unsigned int c) const
   {
@@ -119,7 +135,6 @@ protected:
   ImageCoordinateTransform();
   ~ImageCoordinateTransform() {}
 
-  typedef vnl_matrix_fixed<double,3,3> MatrixType;
 
   // A transform matrix
   MatrixType m_Transform;

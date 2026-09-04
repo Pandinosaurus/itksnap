@@ -41,7 +41,7 @@
 #include "ImageCoordinateGeometry.h"
 #include <itkVectorImage.h>
 #include <itkRGBAPixel.h>
-#include <DisplayMappingPolicy.h>
+#include "DisplayMappingPolicy.h"
 #include <itkSimpleDataObjectDecorator.h>
 #include <array>
 #include <vector>
@@ -171,6 +171,9 @@ public:
   typedef typename Superclass::IndexType                             IndexType;
   typedef typename Superclass::SizeType                               SizeType;
 
+  // Interpolation mode
+  typedef typename Superclass::InterpolationMode             InterpolationMode;
+
   /**
    * Get the parent wrapper for this wrapper. For 'normal' wrappers, this method
    * returns NULL, indicating that the wrapper is a top-level wrapper. For derived
@@ -210,34 +213,34 @@ public:
   /**
     Does this wrapper use the non-orthogonal slicing pipeline?
     */
-  virtual bool IsSlicingOrthogonal() const ITK_OVERRIDE;
+  virtual bool IsSlicingOrthogonal() const override;
 
   /**
    * Clear the data associated with storing an image
    */
-  virtual void Reset() ITK_OVERRIDE;
+  virtual void Reset() override;
 
   /** Get the coordinate transform for each display slice */
   virtual const ImageCoordinateTransform *GetImageToDisplayTransform(
-    unsigned int) const ITK_OVERRIDE;
+    unsigned int) const override;
 
   /**
    * Set the coordinate transformation between the display coordinates and
    * the anatomical coordinates. This affects the behavior of the slicers
    */
-  virtual void SetDisplayGeometry(const IRISDisplayGeometry &dispGeom) ITK_OVERRIDE;
+  virtual void SetDisplayGeometry(const IRISDisplayGeometry &dispGeom) override;
 
   /** Get the display to anatomy coordinate mapping */
   irisGetMacroWithOverride(DisplayGeometry, const IRISDisplayGeometry &)
 
   /** Set the direction matrix of the image */
-  virtual void SetDirectionMatrix(const vnl_matrix<double> &direction) ITK_OVERRIDE;
+  virtual void SetDirectionMatrix(const vnl_matrix<double> &direction) override;
 
   /**
    * Set the image coordinate transform (origin, spacing, direction) to
    * match those of a reference wrapper
    */
-  virtual void CopyImageCoordinateTransform(const ImageWrapperBase *source) ITK_OVERRIDE;
+  virtual void CopyImageCoordinateTransform(const ImageWrapperBase *source) override;
 
   /**
    * Get the image geometry from the wrapper
@@ -248,32 +251,21 @@ public:
   irisGetMacroWithOverride(SliceIndex, IndexType)
 
   /** Return some image info independently of pixel type */
-  ImageBaseType* GetImageBase() const ITK_OVERRIDE;
+  ImageBaseType* GetImageBase() const override;
 
   /** Return 4D image metadata */
-  Image4DBaseType* GetImage4DBase() const ITK_OVERRIDE { return m_Image4D; }
+  Image4DBaseType* GetImage4DBase() const override { return m_Image4D; }
 
   /** Get the number of time points (how many 3D images in 4D array) */
-  virtual unsigned int GetNumberOfTimePoints() const ITK_OVERRIDE { return m_ImageTimePoints.size(); }
+  virtual unsigned int GetNumberOfTimePoints() const override { return m_ImageTimePoints.size(); }
 
   /** Get the time index (which 3D volume in the 4D array is currently shown) */
   irisGetMacroWithOverride(TimePointIndex, unsigned int)
 
   /**
-   * Is the image initialized?
-   */
-  irisIsMacroWithOverride(Initialized)
-
-  /**
    * Get the size of the image
    */
-  Vector3ui GetSize() const ITK_OVERRIDE;
-
-  /** Get layer transparency */
-  irisSetWithEventMacroWithOverride(Alpha, double, WrapperDisplayMappingChangeEvent)
-
-  /** Set layer transparency */
-  irisGetMacroWithOverride(Alpha, double)
+  Vector3ui GetSize() const override;
 
   /**
    * Get layer stickiness. A sticky layer always is shown 'on top' of other
@@ -289,28 +281,28 @@ public:
    * Whether the layer is drawable. Some layers may be initialized, but not
    * yet computed, in which case they should not yet be drawn.
    */
-  virtual bool IsDrawable() const ITK_OVERRIDE;
+  virtual bool IsDrawable() const override;
 
   /** Get the buffered region of the image */
-  virtual itk::ImageRegion<3> GetBufferedRegion() const ITK_OVERRIDE;
+  virtual itk::ImageRegion<3> GetBufferedRegion() const override;
 
   /** Transform a voxel index into a spatial position */
-  virtual Vector3d TransformVoxelIndexToLPSCoordinates(const Vector3i &iVoxel) const ITK_OVERRIDE;
+  virtual Vector3d TransformVoxelIndexToLPSCoordinates(const Vector3i &iVoxel) const override;
 
   /** Transform a voxel index into a spatial position */
-  virtual Vector3d TransformVoxelCIndexToLPSCoordinates(const Vector3d &iVoxel) const ITK_OVERRIDE;
+  virtual Vector3d TransformVoxelCIndexToLPSCoordinates(const Vector3d &iVoxel) const override;
 
   /** Transform spatial position to voxel continuous index (LPS) */
-  virtual Vector3d TransformLPSCoordinatesToVoxelCIndex(const Vector3d &vLPS) const ITK_OVERRIDE;
+  virtual Vector3d TransformLPSCoordinatesToVoxelCIndex(const Vector3d &vLPS) const override;
 
   /** Transform spatial position to voxel index (LPS) */
-  virtual Vector3i TransformLPSCoordinatesToVoxelIndex(const Vector3d &vLPS) const ITK_OVERRIDE;
+  virtual Vector3i TransformLPSCoordinatesToVoxelIndex(const Vector3d &vLPS) const override;
 
   /** Transform a voxel index into NIFTI coordinates (RAS) */
-  virtual Vector3d TransformVoxelCIndexToNIFTICoordinates(const Vector3d &iVoxel) const ITK_OVERRIDE;
+  virtual Vector3d TransformVoxelCIndexToNIFTICoordinates(const Vector3d &iVoxel) const override;
 
   /** Transform NIFTI coordinates to a continuous voxel index */
-  virtual Vector3d TransformNIFTICoordinatesToVoxelCIndex(const Vector3d &vNifti) const ITK_OVERRIDE;
+  virtual Vector3d TransformNIFTICoordinatesToVoxelCIndex(const Vector3d &vNifti) const override;
 
   /**
    * Transform a reference space index to a continuous index in the voxel space of
@@ -322,7 +314,7 @@ public:
   virtual void TransformReferenceCIndexToWrappedImageCIndex(
       const itk::ContinuousIndex<double, 3> &ref_index, itk::ContinuousIndex<double, 3> &img_index) const override;
 
-  virtual bool ImageSpaceMatchesReferenceSpace() const ITK_OVERRIDE;
+  virtual bool ImageSpaceMatchesReferenceSpace() const override;
 
   /** Get the NIFTI s-form matrix for this image */
   irisGetMacroWithOverride(NiftiSform, TransformType)
@@ -348,7 +340,7 @@ public:
    * generates a set of offsets in the image that can be used efficiently to
    * sample patches from the image.
    */
-  virtual PatchOffsetTable GetPatchOffsetTable(const SizeType &radius) const ITK_OVERRIDE;
+  virtual PatchOffsetTable GetPatchOffsetTable(const SizeType &radius) const override;
 
   /**
    * Sample the image patch around a pixel location. No bounds checking is done,
@@ -356,7 +348,17 @@ public:
    * also assumed that the output vector has been allocated already
    */
   virtual void SamplePatchAsDouble(const IndexType &idx, const PatchOffsetTable &offset_table,
-                                   double *out_patch) const ITK_OVERRIDE;
+                                   double *out_patch) const override;
+
+  /**
+   * Get current interpolation mode
+   */
+  virtual typename Superclass::InterpolationMode GetSlicingInterpolationMode() const override;
+
+  /**
+   * Set interpolation mode for non-orthogonal slicing
+   */
+  virtual void SetSlicingInterpolationMode(InterpolationMode mode) override;
 
   /**
    * Sample image intensity at a 4D position in the reference space. If the reference
@@ -371,14 +373,14 @@ public:
    */
   virtual void SampleIntensityAtReferenceIndex(
       const itk::Index<3> &index, int time_point,
-      bool map_to_native, vnl_vector<double> &out) const ITK_OVERRIDE;
+      bool map_to_native, vnl_vector<double> &out) const override;
 
   /**
    * Get the mapping between the internal data type and the 'native' range,
    * i.e., the range of values shown to the user. This may be a linear mapping
    * or an identity mapping. This method returns an abstract type;
    */
-  virtual const AbstractNativeIntensityMapping *GetNativeIntensityMapping() const ITK_OVERRIDE
+  virtual const AbstractNativeIntensityMapping *GetNativeIntensityMapping() const override
     { return &m_NativeMapping; }
 
   /** These methods access the native mapping in its actual type */
@@ -388,11 +390,11 @@ public:
   virtual void SetNativeMapping(NativeIntensityMapping nim);
 
   /** Get the intensity to display mapping */
-  DisplayMapping *GetDisplayMapping() ITK_OVERRIDE
+  DisplayMapping *GetDisplayMapping() override
     { return m_DisplayMapping; }
 
   /** Get the intensity to display mapping */
-  const DisplayMapping *GetDisplayMapping() const ITK_OVERRIDE
+  const DisplayMapping *GetDisplayMapping() const override
     { return m_DisplayMapping; }
 
   /**
@@ -431,23 +433,22 @@ public:
   /** 
    * Get the slicer inside this wrapper
    */
-  virtual SlicerType *GetSlicer(unsigned int iDirection) const;
+  virtual SlicerType *GetSlicer(DisplaySliceIndex index) const;
 
   /**
    * Set the current slice index in all three dimensions.  The index should
    * be specified in the image coordinates, the slices will be generated
    * in accordance with the transforms that are specified
    */
-  virtual void SetSliceIndex(const IndexType &cursor) ITK_OVERRIDE;
+  virtual void SetSliceIndex(const IndexType &cursor) override;
 
   /** Set the current time index */
-  virtual void SetTimePointIndex(unsigned int index) ITK_OVERRIDE;
+  virtual void SetTimePointIndex(unsigned int index) override;
 
-  const ImageBaseType* GetDisplayViewportGeometry(unsigned int index) const;
+  const ImageBaseType *GetDisplayViewportGeometry(DisplaySliceIndex index) const;
 
-  virtual void SetDisplayViewportGeometry(
-      unsigned int index,
-      const ImageBaseType *viewport_image) ITK_OVERRIDE;
+  virtual void SetDisplayViewportGeometry(DisplaySliceIndex    index,
+                                          const ImageBaseType *viewport_image) override;
 
   /**
     Compute the image t-digest, from which the quantiles of the image can be
@@ -459,7 +460,7 @@ public:
     The t-digest is over the 4D image.
     For multi-component data, the t-digest is pooled over all components.
     */
-  virtual TDigestDataObject *GetTDigest() ITK_OVERRIDE;
+  virtual TDigestDataObject *GetTDigest() override;
 
   typedef itk::SimpleDataObjectDecorator<ComponentType> MinMaxObjectType;
 
@@ -470,21 +471,21 @@ public:
   virtual const MinMaxObjectType *GetImageMaxObject();
 
   /** Return componentwise minimum cast to double, without mapping to native range */
-  virtual double GetImageMinAsDouble() ITK_OVERRIDE;
+  virtual double GetImageMinAsDouble() override;
 
   /** Return componentwise maximum cast to double, without mapping to native range */
-  virtual double GetImageMaxAsDouble() ITK_OVERRIDE;
+  virtual double GetImageMaxAsDouble() override;
 
   /** Return componentwise minimum cast to double, after mapping to native range */
-  virtual double GetImageMinNative() ITK_OVERRIDE;
+  virtual double GetImageMinNative() override;
 
   /** Return componentwise maximum cast to double, after mapping to native range */
-  virtual double GetImageMaxNative() ITK_OVERRIDE;
+  virtual double GetImageMaxNative() override;
 
   /**
    * Get a slice of the image in a given direction
    */
-  virtual SliceType *GetSlice(unsigned int dimension);
+  virtual SliceType *GetSlice(DisplaySliceIndex index);
 
   /**
    * This method exposes the scalar pointer in the image
@@ -492,7 +493,7 @@ public:
   //virtual InternalPixelType *GetVoxelPointer() const;
 
   /** Number of voxels */
-  virtual size_t GetNumberOfVoxels() const ITK_OVERRIDE;
+  virtual size_t GetNumberOfVoxels() const override;
 
   /**
    * Pring debugging info
@@ -522,31 +523,36 @@ public:
    * Update the transform between the coordinate space of this image and the program's
    * main reference space
    */
-  virtual void SetITKTransform(ImageBaseType *referenceSpace, ITKTransformType *transform) ITK_OVERRIDE;
+  virtual void SetITKTransform(ImageBaseType *referenceSpace, ITKTransformType *transform) override;
+
+  /**
+   * Set the reference image without changing the transform
+   */
+  virtual void SetReferenceSpace(ImageBaseType *referenceSpace) override;
 
   /**
    * Get the ITK transform between this layer and its reference space
    */
-  virtual const ITKTransformType *GetITKTransform() const ITK_OVERRIDE;
+  virtual const ITKTransformType *GetITKTransform() const override;
 
   /**
    * Get the reference space space in which this image is defined
    */
-  virtual ImageBaseType* GetReferenceSpace() const ITK_OVERRIDE;
+  virtual ImageBaseType* GetReferenceSpace() const override;
 
   /**
    * Extract a region of interest from the image wrapper, as a new wrapper of
    * the same type
    */
   virtual SmartPtr<ImageWrapperBase> ExtractROI(
-      const SNAPSegmentationROISettings &roi, itk::Command *progressCommand) const ITK_OVERRIDE;
+      const SNAPSegmentationROISettings &roi, itk::Command *progressCommand) const override;
 
   /**
    * Extract a 3d region of interest from all time points in the image wrapper,
    * as a new wrapper of the same type
    */
   virtual SmartPtr<ImageWrapperBase> ExtractROI4D(
-      const SNAPSegmentationROISettings &roi, itk::Command *progressCommand) const ITK_OVERRIDE;
+      const SNAPSegmentationROISettings &roi, itk::Command *progressCommand) const override;
 
 
   /**
@@ -574,7 +580,13 @@ public:
   virtual Iterator GetImageIterator();
 
   /** For each slicer, find out which image dimension does is slice along */
-  unsigned int GetDisplaySliceImageAxis(unsigned int slice) ITK_OVERRIDE;
+  unsigned int GetDisplaySliceImageAxis(unsigned int slice) override;
+
+  /**
+   * Map a position in image coordinates to the corresponding position
+   * in one of the slices
+   */
+  Vector3d MapImageCIndexToSliceCIndex(unsigned int iSlice, Vector3d image_cindex) const override ;
 
   /** 
    * Replace all voxels with intensity values iOld with values iNew. 
@@ -591,7 +603,7 @@ public:
   /**
    * Get the display slice
    */
-  DisplaySlicePointer GetDisplaySlice(unsigned int dim) ITK_OVERRIDE;
+  DisplaySlicePointer GetDisplaySlice(DisplaySliceIndex index) override;
 
   /**
     Attach a preview pipeline to the wrapper. This is used with wrappers that
@@ -625,65 +637,27 @@ public:
   irisSetMacroWithOverride(PipelineReady, bool)
 
   /**
-   * Set the filename of the image wrapper. If the wrapper does not have a
-   * nickname, the nickname will be changed to the file part of the filename.
-   */
-  void SetFileName(const std::string &name) ITK_OVERRIDE;
-
-
-  // Access the filename
-  irisGetStringMacroWithOverride(FileName)
-
-  /**
-   * Fallback nickname - shown if no filename and no custom nickname set.
-   */
-  irisGetSetMacroWithOverride(DefaultNickname, const std::string &)
-
-  /**
-   * Get the nickname of the image. A nickname is a shorter description of the
-   * image that is displayed to the user. If a custom nickname is not set, it
-   * defaults to the filename (without path). If there is no filename (i.e.,
-   * the layer is internal), the default nickname is used.
-   */
-  const std::string &GetNickname() const ITK_OVERRIDE;
-
-  /**
-   * Set the custom nickname for the wrapper.
-   */
-  virtual void SetCustomNickname(const std::string &nickname) ITK_OVERRIDE;
-  irisGetMacroWithOverride(CustomNickname, const std::string &);
-
-
-  /**
-   * Access the tags for this image layer. Tags are just strings assigned to the
-   * layer that may be useful to other software
-   */
-  irisGetMacroWithOverride(Tags, const TagList &)
-  irisSetMacroWithOverride(Tags, const TagList &)
-
-
-  /**
    * Access the "IO hints" registry associated with this wrapper. The IO hints
    * are used to help read the image when the filename alone is not sufficient.
    * For example, it may contain the DICOM series ID of the image, or for a raw
    * image the dimensions.
    */
-  virtual const Registry &GetIOHints() const ITK_OVERRIDE;
+  virtual const Registry &GetIOHints() const override;
 
   /**
    * Set the IO hints
    */
-  virtual void SetIOHints(const Registry &io_hints) ITK_OVERRIDE;
+  virtual void SetIOHints(const Registry &io_hints) override;
 
   /**
    * Write the image to disk with the help of the GuidedNativeImageIO object
    */
-  virtual void WriteToFile(const char *filename, Registry &hints) ITK_OVERRIDE;
+  virtual void WriteToFile(const char *filename, Registry &hints) override;
 
   /**
    * Create a thumbnail from the image and write it to a .png file
    */
-  DisplaySlicePointer MakeThumbnail(unsigned int maxdim) ITK_OVERRIDE;
+  DisplaySlicePointer MakeThumbnail(unsigned int maxdim) override;
 
   /**
    * Save metadata to a Registry file. The metadata are data that are not
@@ -691,27 +665,27 @@ public:
    * is reloaded. Currently, this mainly includes the display mapping, but
    * also the transparency, etc.
    */
-  virtual void WriteMetaData(Registry &reg) ITK_OVERRIDE;
+  virtual void WriteMetaData(Registry &reg) override;
 
   /**
    * Restore metadata from a registry
    */
-  virtual void ReadMetaData(Registry &reg) ITK_OVERRIDE;
+  virtual void ReadMetaData(Registry &reg) override;
 
   /**
    * Get the meta data accessor object, useful for inspecting metadata
    */
-  virtual MetaDataAccessType GetMetaDataAccess() ITK_OVERRIDE;
+  virtual MetaDataAccessType GetMetaDataAccess() override;
 
   /**
    * Check if the image has unsaved changes
    */
-  virtual bool HasUnsavedChanges() const ITK_OVERRIDE;
+  virtual bool HasUnsavedChanges() const override;
 
   /**
    * Check if the time point has unsaved changes
    */
-  virtual bool HasUnsavedChanges(unsigned int tp) const ITK_OVERRIDE;
+  virtual bool HasUnsavedChanges(unsigned int tp) const override;
 
   /**
    * This method is only used when this wrapper is around an image adaptor
@@ -733,39 +707,49 @@ public:
   /**
     Cast the internally stored image to a floating point image. The returned
     image is connected to the internally stored image by a mini-pipeline that
-    may include a cast filter or a scale/shift filter, depending on the internal
-    format of the image and the internal-to-native intensity mapping. The wrapper
-    retains a smart pointer to the filters in the pipeline until the pipeline is
-    released by calling ReleaseInternalPipeline()
+    may include a cast filter or a scale/shift filter, depending on the
+    internal format of the image and the internal-to-native intensity mapping.
+    The wrapper retains a smart pointer to the filters in the pipeline until
+    the pipeline is released by calling ReleaseInternalPipeline()
 
-    The pipeline is identified with a key and an optional index, which should be
-    passed to ReleaseInternalPipeline() when it is no longer needed.
+    The pipeline is identified with a key and an optional index, which should
+    be passed to ReleaseInternalPipeline() when it is no longer needed.
 
     The method is intended for use with external pipelines that don't know what
-    the internal data representation is for the image. There is a cost with using
-    this method in terms of memory, so the recommended use is in conjunction with
-    streaming filters, so that the cast mini-pipeline does not allocate the whole
-    floating point image all at once.
+    the internal data representation is for the image. There is a cost with
+    using this method in terms of memory, so the recommended use is in
+    conjunction with streaming filters, so that the cast mini-pipeline does not
+    allocate the whole floating point image all at once.
     */
-  virtual FloatImageType* CreateCastToFloatPipeline(const char *key, int index = 0) ITK_OVERRIDE;
+  virtual FloatImageType *CreateCastToFloatPipeline(const char *key,
+                                                    int index = 0) override;
 
   /** Same as CreateCastToFloatPipeline, but for vector images of single dimension */
-  virtual FloatVectorImageType* CreateCastToFloatVectorPipeline(const char *key, int index = 0) ITK_OVERRIDE;
+  virtual FloatVectorImageType *CreateCastToFloatVectorPipeline(const char *key,
+                                                                int index = 0) override;
 
   /** Create a pipeline for casting an image slice to floating point */
-  virtual FloatSliceType* CreateCastToFloatSlicePipeline(const char *key, unsigned int slice) ITK_OVERRIDE;
+  virtual FloatSliceType *CreateCastToFloatSlicePipeline(const char       *key,
+                                                         DisplaySliceIndex index) override;
 
   /** Create a pipeline for casting an image slice to floating point vector image */
-  virtual FloatVectorSliceType* CreateCastToFloatVectorSlicePipeline(const char *key, unsigned int slice) ITK_OVERRIDE;
+  virtual FloatVectorSliceType *CreateCastToFloatVectorSlicePipeline(const char *key,
+                                                                     DisplaySliceIndex index) override;
 
   /**
    * Release the filters and images in an internally managed pipeline. Passing -1 for
    * the index will release all the indices for this key
    */
-  virtual void ReleaseInternalPipeline(const char *key, int index = -1) ITK_OVERRIDE;
+  virtual void ReleaseInternalPipeline(const char *key, int index = -1) override;
+
+  /**
+   * Release the filters and images in an internally managed pipeline associated with
+   * a display slice index.
+   */
+  virtual void ReleaseInternalPipeline(const char *key, DisplaySliceIndex index) override;
 
   /** Get the format of the image for display */
-  virtual std::string GetPixelFormatDescription() ITK_OVERRIDE;
+  virtual std::string GetPixelFormatDescription() override;
 
 
 protected:
@@ -783,9 +767,6 @@ protected:
 
   /** Destructor */
   virtual ~ImageWrapper();
-
-  /** A unique Id of this wrapper. Used for the LayerAssociation code */
-  unsigned long m_UniqueId;
 
   /**
    * A time-varying image is represented as a 4D image, although we also keep
@@ -842,20 +823,14 @@ protected:
   /** The current cursor position (slice index) in image dimensions */
   IndexType m_SliceIndex;
 
-  /** The associated slicer filters */
-  std::array<SlicerPointer, 3> m_Slicers;
-
   /**
-   * Is the image wrapper initialized? That is a prerequisite for all
-   * operations.
+   * The associated slicer filters. There are multiple roles for which slicers
+   * may be needed, and for each role there are different slicers
    */
-  bool m_Initialized;
+  DisplaySlicePipelineArray<SlicerType> m_Slicers;
 
   /** Pipeline readiness */
   bool m_PipelineReady;
-
-  /** Transparency */
-  double m_Alpha;
 
   /** Stickiness (whether the layer can be tiled or not) */
   bool m_Sticky;
@@ -906,20 +881,6 @@ protected:
    */
   TransformType m_NiftiSform, m_NiftiInvSform;
 
-  // Each layer has a filename, from which it is belived to have come
-  std::string m_FileName, m_FileNameShort;
-
-  // Each layer has a nickname. But this gets complicated, because the nickname
-  // can be set by the user, or it can be default for the wrapper, or it can be
-  // derived from the filename. The nicknames are used in the following order.
-  // - if there is a custom nickname, it is shown
-  // - if there is a filename, nickname is set to the shortened filename
-  // - if there is no filename, nickname is set to the default nickname
-  std::string m_DefaultNickname, m_CustomNickname;
-
-  // Tags for this image layer
-  TagList m_Tags;
-
   // IO Hints registry
   Registry *m_IOHints;
 
@@ -932,7 +893,8 @@ protected:
   /** Internally used method to create a mini-pipeline */
   virtual void AddInternalPipeline(const MiniPipeline &mp, const char *key, int index);
 
-
+  /** Internally used method to create a mini-pipeline */
+  virtual void AddInternalPipeline(const MiniPipeline &mp, const char *key, DisplaySliceIndex index);
 
   /**
    * Handle a change in the image data (i.e., a load operation on the image or
@@ -968,16 +930,12 @@ protected:
   // An internal array to store intensity samples for SampleIntensityAtReferenceIndex function
   mutable vnl_vector<ComponentType> m_IntensitySamplingArray;
 
-  // Compare the geometry (size and header) of two images. Returns true if the headers are
-  // within tolerance of each other.
-  static bool CompareGeometry(ImageBaseType *image1, ImageBaseType *image2, double tol = 0.0);
-
   // Check if the orthogonal slicer can be used for the given image, ref space and transform
   static bool CanOrthogonalSlicingBeUsed(
       ImageType *image, ImageBaseType *referenceSpace, ITKTransformType *transform);
 
   /** Write the image to disk with whatever the internal format is */
-  virtual void WriteToFileInInternalFormat(const char *filename, Registry &hints) ITK_OVERRIDE;
+  virtual void WriteToFileInInternalFormat(const char *filename, Registry &hints) override;
 
   /** Common code invoked when voxels in the image are changed */
   void OnVoxelsUpdated(unsigned int n_replaced);
@@ -985,6 +943,9 @@ protected:
   /** Sample voxels at a reference index and place sampled values in m_IntensitySamplingArray */
   void SampleIntensityAtReferenceIndexInternal(
       const itk::Index<3> &index, unsigned int tp_begin, unsigned int tp_end) const;
+
+  /** Get the zero value for a pixel (may be a vector) */
+  PixelType GetZeroPixelValue() const;
 
   /** Whether the current wrapper is of vector type or scalar type (for internal use) */
   typedef std::is_base_of<itk::VectorImage<ComponentType, 3>, ImageType> IsVector;
